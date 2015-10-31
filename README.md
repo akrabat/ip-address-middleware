@@ -2,15 +2,17 @@
 
 PSR-7 Middleware that determines the client IP address and stores it as an `ServerRequest` attribute called `ip_address`.
 
-It checks the 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-Ip' headers for the first IP address it can find. If none of the headers exist, or do not have a valid IP address, then the `$_SERVER['REMOTE_ADDR']` is used.
+[![Build status][Master image]][Master]
 
-*Note that the headers are only checked if the first parameter to the constructor is set to `true`.*
 
-### Trusted Proxies
+This middleware checks the 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-Ip' headers for the first IP address it can find. If none of the headers exist, or do not have a valid IP address, then the `$_SERVER['REMOTE_ADDR']` is used.
+
+*Note that the proxy headers are only checked if the first parameter to the constructor is set to `true`. If set to false, then only `$_SERVER['REMOTE_ADDR']` is used*
+
+**Trusted Proxies**
 
 You can set a list of proxies that are trusted as the second constructor parameter. If this list is set, then the proxy headers will only be checked if the `REMOTE_ADDR` is in the trusted list.
 
-[![Build status][Master image]][Master]
 
 ## Installation
 
