@@ -13,7 +13,7 @@ class RendererTest extends \PHPUnit_Framework_TestCase
 {
     public function testIpSetByRemoteAddr()
     {
-        $middleware = new IPAddress();
+        $middleware = new IPAddress(false, [], 'IP');
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -22,7 +22,7 @@ class RendererTest extends \PHPUnit_Framework_TestCase
 
         $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
             // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
+            $ipAddress = $request->getAttribute('IP');
             return $response;
         });
 
@@ -184,5 +184,30 @@ class RendererTest extends \PHPUnit_Framework_TestCase
         });
 
         $this->assertSame('192.168.0.2', $ipAddress);
+    }
+
+
+    public function testCustomHeader()
+    {
+        $middleware = new IPAddress(true);
+
+        $headers = $middleware->getHeaders();
+        $headers[] = 'Foo-Bar';
+        $middleware->setHeaders($headers);
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.0.1',
+        ]);
+        $request = $request->withAddedHeader('Foo-Bar', '192.168.1.3');
+        $response = new Response();
+
+        $ipAddress = '123';
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('ip_address');
+            return $response;
+        });
+
+        $this->assertSame('192.168.1.3', $ipAddress);
     }
 }
