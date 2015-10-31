@@ -6,6 +6,10 @@ It checks the 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-I
 
 *Note that the headers are only checked if the first parameter to the constructor is set to `true`.*
 
+### Trusted Proxies
+
+You can set a list of proxies that are trusted as the second constructor parameter. If this list is set, then the proxy headers will only be checked if the `REMOTE_ADDR` is in the trusted list.
+
 [![Build status][Master image]][Master]
 
 ## Installation
@@ -17,8 +21,9 @@ It checks the 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-I
 In Slim 3:
 
 ```php
-$lookAtProxyHeaders = true; // Note: Never trust the IP address for security processes!
-$app->add(new RKA\Middleware\IpAddress($lookAtProxyHeaders));
+$checkProxyHeaders = true; // Note: Never trust the IP address for security processes!
+$trustedProxies = ['10.0.0.1', '10.0.0.2']; // Note: Never trust the IP address for security processes!
+$app->add(new RKA\Middleware\IpAddress($checkProxyHeaders, $trustedProxies));
 
 $app->get('/', function ($request, $response, $args) {
     $ipAddress = $request->getAttribute('ip_address');

@@ -17,11 +17,22 @@ class IpAddress
     protected $checkProxyHeaders;
 
     /**
+     * List of trusted proxy IP addresses
+     *
+     * If not empty, then one of these IP addresses must be in $_SERVER['REMOTE_ADDR']
+     * in order for the proxy headers to be looked at.
+     *
+     * @var array
+     */
+    protected $trustedProxies;
+
+    /**
      * @param bool $checkProxyHeaders Whether to use proxy headers to determine client IP
      */
-    public function __construct($checkProxyHeaders = false)
+    public function __construct($checkProxyHeaders = false, $trustedProxies = [])
     {
         $this->checkProxyHeaders = $checkProxyHeaders;
+        $this->trustedProxies = $trustedProxies;
     }
 
     /**
@@ -43,7 +54,14 @@ class IpAddress
             $ipAddress = $serverParams['REMOTE_ADDR'];
         }
 
-        if ($this->checkProxyHeaders) {
+        $checkProxyHeaders = $this->checkProxyHeaders;
+        if ($checkProxyHeaders && !empty($this->trustedProxies)) {
+            if (!in_array($ipAddress, $this->trustedProxies)) {
+                $checkProxyHeaders = false;
+            }
+        }
+
+        if ($checkProxyHeaders) {
             $headers = ['X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-Ip'];
             foreach ($headers as $header) {
                 if ($request->hasHeader($header)) {
