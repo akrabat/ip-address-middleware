@@ -104,6 +104,12 @@ class IpAddress
         return $response = $next($request, $response);
     }
 
+    /**
+     * Check that a given string is a valid IP address
+     *
+     * @param  string  $ip
+     * @return boolean
+     */
     protected function isValidIpAddress($ip)
     {
         $flags = FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6;
