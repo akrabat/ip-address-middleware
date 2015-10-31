@@ -14,14 +14,14 @@ class IpAddress
      *
      * @var bool
      */
-    protected $useProxy;
+    protected $checkProxyHeaders;
 
     /**
-     * @param bool $useProxy Whether to use proxy headers to determine client IP
+     * @param bool $checkProxyHeaders Whether to use proxy headers to determine client IP
      */
-    public function __construct($useProxy = false)
+    public function __construct($checkProxyHeaders = false)
     {
-        $this->useProxy = $useProxy;
+        $this->checkProxyHeaders = $checkProxyHeaders;
     }
 
     /**
@@ -43,7 +43,7 @@ class IpAddress
             $ipAddress = $serverParams['REMOTE_ADDR'];
         }
 
-        if ($this->useProxy) {
+        if ($this->checkProxyHeaders) {
             $headers = ['X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip', 'Client-Ip'];
             foreach ($headers as $header) {
                 if ($request->hasHeader($header)) {
