@@ -157,4 +157,26 @@ class IpAddress
         $this->headers = $headers;
         return $this;
     }
+
+    /**
+     * Getter for trustedProxies
+     *
+     * @return array
+     */
+    public function getTrustedProxies()
+    {
+        return $this->trustedProxies;
+    }
+    
+    /**
+     * Setter for trustedProxies
+     *
+     * @param array $trustedProxies
+     * @return self
+     */
+    public function setTrustedProxies($trustedProxies)
+    {
+        $this->trustedProxies = $trustedProxies;
+        return $this;
+    }
 }
