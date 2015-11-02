@@ -74,9 +74,13 @@ class IpAddress
      */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, $next)
     {
-        $ipAddress = $this->determineClientIpAddress($request);
+        if (!$next) {
+            return $response;
+        }
 
+        $ipAddress = $this->determineClientIpAddress($request);
         $request = $request->withAttribute($this->attributeName, $ipAddress);
+
         return $response = $next($request, $response);
     }
     
