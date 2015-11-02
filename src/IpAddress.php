@@ -74,6 +74,20 @@ class IpAddress
      */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, $next)
     {
+        $ipAddress = $this->determineClientIpAddress($request);
+
+        $request = $request->withAttribute($this->attributeName, $ipAddress);
+        return $response = $next($request, $response);
+    }
+    
+    /**
+     * Find out the client's IP address from the headers available to us
+     *
+     * @param  ServerRequestInterface $request PSR-7 Request
+     * @return string
+     */
+    protected function determineClientIpAddress($request)
+    {
         $ipAddress = null;
 
         $serverParams = $request->getServerParams();
@@ -100,8 +114,7 @@ class IpAddress
             }
         }
 
-        $request = $request->withAttribute($this->attributeName, $ipAddress);
-        return $response = $next($request, $response);
+        return $ipAddress;
     }
 
     /**
