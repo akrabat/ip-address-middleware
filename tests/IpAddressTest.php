@@ -189,11 +189,10 @@ class RendererTest extends \PHPUnit_Framework_TestCase
 
     public function testCustomHeader()
     {
-        $middleware = new IPAddress(true);
-
-        $headers = $middleware->getHeaders();
-        $headers[] = 'Foo-Bar';
-        $middleware->setHeaders($headers);
+        $headersToInspect = [
+            'Foo-Bar'
+        ];
+        $middleware = new IPAddress(true, [], null, $headersToInspect);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.0.1',

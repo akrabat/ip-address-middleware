@@ -38,7 +38,7 @@ class IpAddress
      *
      * @var array
      */
-    protected $headers = [
+    protected $headersToInspect = [
         'X-Forwarded-For',
         'X-Forwarded',
         'X-Cluster-Client-Ip',
@@ -51,14 +51,22 @@ class IpAddress
      * @param bool $checkProxyHeaders Whether to use proxy headers to determine client IP
      * @param array $trustedProxies   List of IP addresses of trusted proxies
      * @param string $attributeName   Name of attribute added to ServerRequest object
+     * @param array $headersToInspect List of headers to inspect
      */
-    public function __construct($checkProxyHeaders = false, $trustedProxies = [], $attributeName = null)
-    {
+    public function __construct(
+        $checkProxyHeaders = false,
+        array $trustedProxies = [],
+        $attributeName = null,
+        array $headersToInspect = []
+    ) {
         $this->checkProxyHeaders = $checkProxyHeaders;
         $this->trustedProxies = $trustedProxies;
 
         if ($attributeName) {
             $this->attributeName = $attributeName;
+        }
+        if (!empty($headersToInspect)) {
+            $this->headersToInspect = $headersToInspect;
         }
     }
 
@@ -107,7 +115,7 @@ class IpAddress
         }
 
         if ($checkProxyHeaders) {
-            foreach ($this->headers as $header) {
+            foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
                     $ip = trim(current(explode(',', $request->getHeaderLine($header))));
                     if ($this->isValidIpAddress($ip)) {
@@ -134,49 +142,5 @@ class IpAddress
             return false;
         }
         return true;
-    }
-
-    /**
-     * Getter for headers
-     *
-     * @return array
-     */
-    public function getHeaders()
-    {
-        return $this->headers;
-    }
-
-    /**
-     * Setter for headers
-     *
-     * @param array $headers List of proxy headers to test against
-     * @return self
-     */
-    public function setHeaders(array $headers)
-    {
-        $this->headers = $headers;
-        return $this;
-    }
-
-    /**
-     * Getter for trustedProxies
-     *
-     * @return array
-     */
-    public function getTrustedProxies()
-    {
-        return $this->trustedProxies;
-    }
-    
-    /**
-     * Setter for trustedProxies
-     *
-     * @param array $trustedProxies
-     * @return self
-     */
-    public function setTrustedProxies($trustedProxies)
-    {
-        $this->trustedProxies = $trustedProxies;
-        return $this;
     }
 }
