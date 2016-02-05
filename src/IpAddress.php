@@ -39,6 +39,7 @@ class IpAddress
      * @var array
      */
     protected $headersToInspect = [
+        'Forwarded',
         'X-Forwarded-For',
         'X-Forwarded',
         'X-Cluster-Client-Ip',
@@ -117,7 +118,7 @@ class IpAddress
         if ($checkProxyHeaders) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
-                    $ip = trim(current(explode(',', $request->getHeaderLine($header))));
+                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
                     if ($this->isValidIpAddress($ip)) {
                         $ipAddress = $ip;
                         break;
@@ -142,5 +143,28 @@ class IpAddress
             return false;
         }
         return true;
+    }
+
+    /**
+     * Find out the client's IP address from the headers available to us
+     *
+     * @param  ServerRequestInterface $request PSR-7 Request
+     * @param  string $header Header name
+     * @return string
+     */
+    private function getFirstIpAddressFromHeader($request, $header)
+    {
+        $headerValue = trim(reset(explode(',', $request->getHeaderLine($header))));
+
+        if (ucfirst($header) == 'Forwarded') {
+            foreach (explode(';', $headerValue) as $headerPart) {
+                if (strtolower(substr($headerPart, 0, 4)) == 'for=') {
+                    $headerValue = trim(substr(reset(explode(']', $headerPart)), 4), " \t\n\r\0\x0B" . "\"[]");
+                    break;
+                }
+            }
+        }
+
+        return $headerValue;
     }
 }
