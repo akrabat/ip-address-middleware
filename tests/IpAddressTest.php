@@ -186,6 +186,65 @@ class RendererTest extends \PHPUnit_Framework_TestCase
         $this->assertSame('192.168.0.2', $ipAddress);
     }
 
+    public function testForwardedWithMultipleFor()
+    {
+        $middleware = new IPAddress(true);
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'for=192.0.2.43, for=198.51.100.17;by=203.0.113.60;proto=http;host=example.com',
+        ]);
+        $response = new Response();
+
+        $ipAddress = '123';
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('ip_address');
+            return $response;
+        });
+
+        $this->assertSame('192.0.2.43', $ipAddress);
+    }
+
+    public function testForwardedWithAllOptions()
+    {
+        $middleware = new IPAddress(true);
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'for=192.0.2.60; proto=http;by=203.0.113.43; host=_hiddenProxy, for=192.0.2.61',
+        ]);
+        $response = new Response();
+
+        $ipAddress = '123';
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('ip_address');
+            return $response;
+        });
+
+        $this->assertSame('192.0.2.60', $ipAddress);
+    }
+
+    public function testForwardedWithWithIpV6()
+    {
+        $middleware = new IPAddress(true);
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", for=_internalProxy',
+        ]);
+        $response = new Response();
+
+        $ipAddress = '123';
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('ip_address');
+            return $response;
+        });
+
+        $this->assertSame('2001:db8:cafe::17', $ipAddress);
+    }
 
     public function testCustomHeader()
     {
