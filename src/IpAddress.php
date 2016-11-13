@@ -154,12 +154,14 @@ class IpAddress
      */
     private function getFirstIpAddressFromHeader($request, $header)
     {
-        $headerValue = trim(reset(explode(',', $request->getHeaderLine($header))));
+        $items = explode(',', $request->getHeaderLine($header));
+        $headerValue = trim(reset($items));
 
         if (ucfirst($header) == 'Forwarded') {
             foreach (explode(';', $headerValue) as $headerPart) {
                 if (strtolower(substr($headerPart, 0, 4)) == 'for=') {
-                    $headerValue = trim(substr(reset(explode(']', $headerPart)), 4), " \t\n\r\0\x0B" . "\"[]");
+                    $for = explode(']', $headerPart);
+                    $headerValue = trim(substr(reset($for), 4), " \t\n\r\0\x0B" . "\"[]");
                     break;
                 }
             }
