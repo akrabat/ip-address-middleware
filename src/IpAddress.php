@@ -138,11 +138,7 @@ class IpAddress
      */
     protected function isValidIpAddress($ip)
     {
-        $flags = FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6;
-        if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) {
-            return false;
-        }
-        return true;
+        return !(filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === false);
     }
 
     /**
