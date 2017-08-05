@@ -108,16 +108,10 @@ class IpAddress
             $ipAddress = $serverParams['REMOTE_ADDR'];
         }
 
-        $checkProxyHeaders = false;
-
         if ($this->checkProxyHeaders
             && !empty($this->trustedProxies)
             && in_array($ipAddress, $this->trustedProxies)
         ) {
-            $checkProxyHeaders = true;
-        }
-
-        if ($checkProxyHeaders) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
                     $ip = $this->getFirstIpAddressFromHeader($request, $header);
