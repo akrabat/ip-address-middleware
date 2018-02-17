@@ -3,8 +3,10 @@ namespace RKA\Middleware;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
-class IpAddress
+class IpAddress implements MiddlewareInterface
 {
     /**
      * Enable checking of proxy headers (X-Forwarded-For to determined client IP.
@@ -69,6 +71,17 @@ class IpAddress
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        $ipAddress = $this->determineClientIpAddress($request);
+        $request = $request->withAttribute($this->attributeName, $ipAddress);
+
+        return $handler->handle($request);
     }
 
     /**
