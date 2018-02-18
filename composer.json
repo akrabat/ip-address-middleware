@@ -1,5 +1,5 @@
 {
-    "name": "akrabat/rka-ip-address-middleware",
+    "name": "akrabat/ip-address-middleware",
     "description": "PSR-15 middleware that determines the client IP address and stores it as a ServerRequest attribute",
     "keywords": [
         "psr7", "middleware", "ip"
