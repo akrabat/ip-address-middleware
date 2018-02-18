@@ -1,6 +1,6 @@
 # Client IP address middleware
 
-PSR-7 Middleware that determines the client IP address and stores it as an `ServerRequest` attribute called `ip_address`.
+PSR-15 Middleware that determines the client IP address and stores it as an `ServerRequest` attribute called `ip_address`.
 
 [![Build status][Master image]][Master]
 
