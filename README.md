@@ -52,5 +52,5 @@ $app->get('/', function ($request, $response, $args) {
 * Code coverage: ``$ vendor/bin/phpunit --coverage-html ./build``
 
 
-[Master]: https://travis-ci.org/akrabat/rka-content-type-renderer
-[Master image]: https://secure.travis-ci.org/akrabat/rka-content-type-renderer.svg?branch=master
+[Master]: https://travis-ci.org/akrabat/ip-address-middleware
+[Master image]: https://secure.travis-ci.org/akrabat/ip-address-middleware.svg?branch=master
