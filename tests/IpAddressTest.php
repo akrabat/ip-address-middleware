@@ -1,6 +1,10 @@
 <?php
 namespace RKA\Middleware\Test;
 
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
 use RKA\Middleware\IpAddress;
 use Zend\Diactoros\ServerRequest;
 use Zend\Diactoros\ServerRequestFactory;
@@ -267,5 +271,27 @@ class RendererTest extends \PHPUnit_Framework_TestCase
         });
 
         $this->assertSame('192.168.1.3', $ipAddress);
+    }
+
+
+    public function testPSR15()
+    {
+        $middleware = new IPAddress();
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.0.1',
+        ]);
+
+        $handler = (new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                $response = new Response();
+                $response->getBody()->write("Hello World");
+
+                return $response;
+            }
+        });
+        $response = $middleware->process($request, $handler);
+
+        $this->assertSame("Hello World", (string) $response->getBody());
     }
 }
