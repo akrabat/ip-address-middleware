@@ -27,7 +27,7 @@ By default, this middleware checks the 'Forwarded', 'X-Forwarded-For', 'X-Forwar
 
 ## Installation
 
-`composer require akrabat/rka-ip-address-middleware`
+`composer require akrabat/ip-address-middleware`
 
 ## Usage
 
