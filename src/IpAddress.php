@@ -75,6 +75,9 @@ class IpAddress implements MiddlewareInterface
 
     /**
      * {@inheritDoc}
+     *
+     * Set the "$attributeName" attribute to the client's IP address as determined from
+     * the proxy header (X-Forwarded-For or from $_SERVER['REMOTE_ADDR']
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -105,7 +108,7 @@ class IpAddress implements MiddlewareInterface
 
         return $response = $next($request, $response);
     }
-    
+
     /**
      * Find out the client's IP address from the headers available to us
      *
