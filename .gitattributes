@@ -1,5 +1,0 @@
-*.json  text eol=lf
-*.md    text eol=lf
-*.php   text eol=lf
-*.xml   text eol=lf
-*.yml   text eol=lf
