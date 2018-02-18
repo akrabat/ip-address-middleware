@@ -1,19 +1,20 @@
 <?php
 namespace RKA\Middleware\Test;
 
-use Psr\Http\Message\ServerRequestInterface;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use RKA\Middleware\IpAddress;
+use RuntimeException;
+use Zend\Diactoros\Response;
 use Zend\Diactoros\ServerRequest;
 use Zend\Diactoros\ServerRequestFactory;
-use Zend\Diactoros\Uri;
-use Zend\Diactoros\Response;
 use Zend\Diactoros\Stream;
-use RuntimeException;
+use Zend\Diactoros\Uri;
 
-class RendererTest extends \PHPUnit_Framework_TestCase
+class RendererTest extends TestCase
 {
     public function testIpSetByRemoteAddr()
     {
