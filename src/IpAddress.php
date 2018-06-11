@@ -124,10 +124,14 @@ class IpAddress implements MiddlewareInterface
             $ipAddress = $serverParams['REMOTE_ADDR'];
         }
 
-        if ($this->checkProxyHeaders
-            && !empty($this->trustedProxies)
-            && in_array($ipAddress, $this->trustedProxies)
-        ) {
+        $checkProxyHeaders = $this->checkProxyHeaders;
+        if ($checkProxyHeaders && !empty($this->trustedProxies)) {
+            if (!in_array($ipAddress, $this->trustedProxies)) {
+                $checkProxyHeaders = false;
+            }
+        }
+
+        if ($checkProxyHeaders) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
                     $ip = $this->getFirstIpAddressFromHeader($request, $header);
