@@ -53,7 +53,7 @@ class RendererTest extends TestCase
 
     public function testXForwardedForIp()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -193,7 +193,7 @@ class RendererTest extends TestCase
 
     public function testForwardedWithMultipleFor()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -213,7 +213,7 @@ class RendererTest extends TestCase
 
     public function testForwardedWithAllOptions()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -233,7 +233,7 @@ class RendererTest extends TestCase
 
     public function testForwardedWithWithIpV6()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
