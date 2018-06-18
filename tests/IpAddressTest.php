@@ -93,7 +93,7 @@ class RendererTest extends TestCase
 
     public function testHttpClientIp()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -113,7 +113,7 @@ class RendererTest extends TestCase
 
     public function testXForwardedForIpV6()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -133,7 +133,7 @@ class RendererTest extends TestCase
 
     public function testXForwardedForWithInvalidIp()
     {
-        $middleware = new IPAddress(true);
+        $middleware = new IPAddress(true, []);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
@@ -294,5 +294,11 @@ class RendererTest extends TestCase
         $response = $middleware->process($request, $handler);
 
         $this->assertSame("Hello World", (string) $response->getBody());
+    }
+
+    public function testNotGivingAProxyListShouldThrowException()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new IpAddress(true);
     }
 }

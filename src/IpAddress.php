@@ -58,10 +58,14 @@ class IpAddress implements MiddlewareInterface
      */
     public function __construct(
         $checkProxyHeaders = false,
-        array $trustedProxies = [],
+        array $trustedProxies = null,
         $attributeName = null,
         array $headersToInspect = []
     ) {
+        if ($checkProxyHeaders && $trustedProxies === null) {
+            throw new \InvalidArgumentException('Use of the forward headers requires an array for trusted proxies.');
+        }
+
         $this->checkProxyHeaders = $checkProxyHeaders;
         $this->trustedProxies = $trustedProxies;
 
