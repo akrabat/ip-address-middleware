@@ -15,7 +15,7 @@ Note that the proxy headers are only checked if the first parameter to the const
 
 **Trusted Proxies**
 
-You can set a list of proxies that are trusted as the second constructor parameter. If this list is set, then the proxy headers will only be checked if the `REMOTE_ADDR` is in the trusted list.
+If you configure to check the proxy headers (first parameter is `true`), you have to provide an array of trusted proxies as the second parameter. If the array is empty, the proxy headers will always be evaluated. If the array is not empty, it must contain strings with IP addresses, one of them must be the `$_SERVER['REMOTE_ADDR']` variable in order to allow evaluating the proxy headers - otherwise the `REMOTE_ADDR` itself is returned.
 
 **Attribute name**
 
@@ -24,6 +24,12 @@ By default, the name of the attribute is '`ip_address`'. This can be changed by 
 **Headers to inspect**
 
 By default, this middleware checks the 'Forwarded', 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip' and 'Client-Ip' headers. You can replace this list with your own using the fourth constructor parameter.
+
+## Security considerations
+
+A malicious client may send any header to your proxy, including any proxy headers, containing any IP address. If your proxy simply adds another IP address to the header, an attacker can send a fake IP. Make sure to setup your proxy in a way that removes any sent (and possibly faked) headers from the original request and replaces them with correct values (i.e. the currently used `REMOTE_ADDR` on the proxy server).
+
+This library cannot by design ensure you get correct and trustworthy results if your network environment isn't setup properly.
 
 ## Installation
 
