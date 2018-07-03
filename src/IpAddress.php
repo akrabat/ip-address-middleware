@@ -120,8 +120,11 @@ class IpAddress implements MiddlewareInterface
         $ipAddress = null;
 
         $serverParams = $request->getServerParams();
-        if (isset($serverParams['REMOTE_ADDR']) && $this->isValidIpAddress($serverParams['REMOTE_ADDR'])) {
-            $ipAddress = $serverParams['REMOTE_ADDR'];
+        if (isset($serverParams['REMOTE_ADDR'])) {
+            $remoteAddr = $this->extractIpAddress($serverParams['REMOTE_ADDR']);
+            if ($this->isValidIpAddress($remoteAddr)) {
+                $ipAddress = $remoteAddr;
+            }
         }
 
         if ($this->checkProxyHeaders
@@ -136,6 +139,26 @@ class IpAddress implements MiddlewareInterface
                         break;
                     }
                 }
+            }
+        }
+
+        return $ipAddress;
+    }
+
+    /**
+     * Remove port from IPV4 address if it exists
+     *
+     * Note: leaves IPV6 addresses alone
+     *
+     * @param  string $ipAddress
+     * @return string
+     */
+    protected function extractIpAddress($ipAddress)
+    {
+        $parts = explode(':', $ipAddress);
+        if (count($parts) == 2) {
+            if (filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+                return $parts[0];
             }
         }
 
@@ -179,6 +202,6 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        return $headerValue;
+        return $this->extractIpAddress($headerValue);
     }
 }

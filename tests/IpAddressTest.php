@@ -34,6 +34,24 @@ class RendererTest extends TestCase
         $this->assertSame('192.168.1.1', $ipAddress);
     }
 
+    public function testIpWithPortSetByRemoteAddr()
+    {
+        $middleware = new IPAddress(false, [], 'IP');
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.1.1:80',
+        ]);
+        $response = new Response();
+
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('IP');
+            return $response;
+        });
+
+        $this->assertSame('192.168.1.1', $ipAddress);
+    }
+
     public function testIpIsNullIfMissing()
     {
         $middleware = new IPAddress();
@@ -58,6 +76,26 @@ class RendererTest extends TestCase
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
+        ]);
+        $response = new Response();
+
+        $ipAddress = '123';
+        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+            // simply store the "ip_address" attribute in to the referenced $ipAddress
+            $ipAddress = $request->getAttribute('ip_address');
+            return $response;
+        });
+
+        $this->assertSame('192.168.1.3', $ipAddress);
+    }
+
+    public function testXForwardedForIpWithPort()
+    {
+        $middleware = new IPAddress(true, ['192.168.1.1']);
+
+        $request = ServerRequestFactory::fromGlobals([
+            'REMOTE_ADDR' => '192.168.1.1:81',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.3:81, 192.168.1.2:81, 192.168.1.1:81'
         ]);
         $response = new Response();
 
