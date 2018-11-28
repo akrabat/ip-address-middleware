@@ -25,6 +25,33 @@ By default, the name of the attribute is '`ip_address`'. This can be changed by 
 
 By default, this middleware checks the 'Forwarded', 'X-Forwarded-For', 'X-Forwarded', 'X-Cluster-Client-Ip' and 'Client-Ip' headers. You can replace this list with your own using the fourth constructor parameter.
 
+If you use the _nginx_, [set_real_ip_from][nginx] directive, then you should probably set this to:
+
+    $headersToInspect = [
+        'X-Real-IP',
+        'Forwarded',
+        'X-Forwarded-For',
+        'X-Forwarded',
+        'X-Cluster-Client-Ip',
+        'Client-Ip',
+    ];
+
+If you use _CloudFlare_, then according to the [documentation][cloudflare] you should probably set this to:
+
+    $headersToInspect = [
+        'CF-Connecting-IP',
+        'True-Client-IP',
+        'Forwarded',
+        'X-Forwarded-For',
+        'X-Forwarded',
+        'X-Cluster-Client-Ip',
+        'Client-Ip',
+    ];
+
+[nginx]: http://nginx.org/en/docs/http/ngx_http_realip_module.html
+[cloudflare]: https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-Cloudflare-handle-HTTP-Request-headers-
+
+
 ## Security considerations
 
 A malicious client may send any header to your proxy, including any proxy headers, containing any IP address. If your proxy simply adds another IP address to the header, an attacker can send a fake IP. Make sure to setup your proxy in a way that removes any sent (and possibly faked) headers from the original request and replaces them with correct values (i.e. the currently used `REMOTE_ADDR` on the proxy server).
