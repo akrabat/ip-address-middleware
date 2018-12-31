@@ -11,7 +11,7 @@ use Zend\Diactoros\ServerRequestFactory;
 
 class RendererTest extends TestCase
 {
-    private function _ipAddrMatches(IPAddress $middleware, $env, $attrName = 'ip_address')
+    private function simpleRequest(IPAddress $middleware, $env, $attrName = 'ip_address')
     {
         $request = ServerRequestFactory::fromGlobals($env);
         $attributeValue = '__DUMMY_VALUE__';
@@ -28,7 +28,7 @@ class RendererTest extends TestCase
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env, 'IP');
+        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -39,7 +39,7 @@ class RendererTest extends TestCase
         $env = [
             'REMOTE_ADDR' => '192.168.1.1:80',
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env, 'IP');
+        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -58,7 +58,7 @@ class RendererTest extends TestCase
                 'REMOTE_ADDR' => $remoteAddr,
                 'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
             ];
-            $ipAddress = $this->_ipAddrMatches($middleware, $env);
+            $ipAddress = $this->simpleRequest($middleware, $env);
             $this->assertSame('123.4.5.6', $ipAddress, "Testing CIDR: $cidr");
         }
 
@@ -75,7 +75,7 @@ class RendererTest extends TestCase
                 'REMOTE_ADDR' => $remoteAddr,
                 'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
             ];
-            $ipAddress = $this->_ipAddrMatches($middleware, $env);
+            $ipAddress = $this->simpleRequest($middleware, $env);
             $this->assertNotSame('123.4.5.6', $ipAddress, "Testing CIDR: $cidr");
         }
     }
@@ -96,7 +96,7 @@ class RendererTest extends TestCase
                 'REMOTE_ADDR' => $remoteAddr,
                 'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
             ];
-            $ipAddress = $this->_ipAddrMatches($middleware, $env);
+            $ipAddress = $this->simpleRequest($middleware, $env);
             $this->assertSame('123.4.5.6', $ipAddress, "Testing wildcard: $wildcard");
         }
 
@@ -115,7 +115,7 @@ class RendererTest extends TestCase
                 'REMOTE_ADDR' => $remoteAddr,
                 'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
             ];
-            $ipAddress = $this->_ipAddrMatches($middleware, $env);
+            $ipAddress = $this->simpleRequest($middleware, $env);
             $this->assertNotSame('123.4.5.6', $ipAddress, "Testing wildcard: $wildcard");
         }
     }
@@ -123,7 +123,7 @@ class RendererTest extends TestCase
     public function testIpIsNullIfMissing()
     {
         $middleware = new IPAddress();
-        $ipAddress = $this->_ipAddrMatches($middleware, []);
+        $ipAddress = $this->simpleRequest($middleware, []);
 
         $this->assertNull($ipAddress);
     }
@@ -135,7 +135,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -147,7 +147,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1:81',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3:81, 192.168.1.2:81, 192.168.1.1:81'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -159,7 +159,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.0.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.0.1', $ipAddress);
     }
@@ -171,7 +171,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_CLIENT_IP' => '192.168.1.3'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -183,7 +183,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '001:DB8::21f:5bff:febf:ce22:8a2e'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('001:DB8::21f:5bff:febf:ce22:8a2e', $ipAddress);
     }
@@ -195,7 +195,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => 'foo-bar'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -207,7 +207,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.0.2',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -219,7 +219,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.0.2',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.0.2', $ipAddress);
     }
@@ -231,7 +231,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'for=192.0.2.43, for=198.51.100.17;by=203.0.113.60;proto=http;host=example.com',
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.0.2.43', $ipAddress);
     }
@@ -243,7 +243,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'for=192.0.2.60; proto=http;by=203.0.113.43; host=_hiddenProxy, for=192.0.2.61',
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.0.2.60', $ipAddress);
     }
@@ -255,7 +255,7 @@ class RendererTest extends TestCase
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", for=_internalProxy',
         ];
-        $ipAddress = $this->_ipAddrMatches($middleware, $env);
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('2001:db8:cafe::17', $ipAddress);
     }
