@@ -2,34 +2,33 @@
 namespace RKA\Middleware\Test;
 
 use Laminas\Diactoros\Response;
-use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\ServerRequestFactory;
-use Laminas\Diactoros\Stream;
-use Laminas\Diactoros\Uri;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use RKA\Middleware\IpAddress;
-use RuntimeException;
 
 class RendererTest extends TestCase
 {
+    private function simpleRequest(IPAddress $middleware, $env, $attrName = 'ip_address')
+    {
+        $request = ServerRequestFactory::fromGlobals($env);
+        $attributeValue = '__DUMMY_VALUE__';
+        $middleware($request, new Response(), function ($request, $response) use (&$attributeValue, $attrName) {
+            $attributeValue = $request->getAttribute($attrName);
+            return $response;
+        });
+        return $attributeValue;
+    }
+
     public function testIpSetByRemoteAddr()
     {
         $middleware = new IPAddress(false, [], 'IP');
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
-        ]);
-        $response = new Response();
-
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('IP');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -37,34 +36,94 @@ class RendererTest extends TestCase
     public function testIpWithPortSetByRemoteAddr()
     {
         $middleware = new IPAddress(false, [], 'IP');
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1:80',
-        ]);
-        $response = new Response();
-
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('IP');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
 
         $this->assertSame('192.168.1.1', $ipAddress);
+    }
+
+    public function testIpCidrMatch()
+    {
+        $positiveMatches = [
+            '10.0.8.23' => '10.0.0.0/16',
+            '10.0.238.184' => '10.0.0.0/16',
+            '10.0.128.129' => '10.0.128.129/32',
+            '10.0.160.10' => '10.0.160.8/29',
+        ];
+        foreach ($positiveMatches as $remoteAddr => $cidr) {
+            $middleware = new IPAddress(true, [$cidr]);
+            $env = [
+                'REMOTE_ADDR' => $remoteAddr,
+                'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+            ];
+            $ipAddress = $this->simpleRequest($middleware, $env);
+            $this->assertSame('123.4.5.6', $ipAddress, "Testing CIDR: $cidr");
+        }
+
+        $negativeMatches = [
+            '10.1.8.23' => '10.0.0.0/16',
+            '192.0.238.184' => '10.0.0.0/16',
+            '10.0.122.123' => '10.0.128.129/32',
+            '10.0.160.7' => '10.0.160.8/29',
+            '10:0:160:8:a:a:a:a' => '10.0.160.8/29',
+        ];
+        foreach ($negativeMatches as $remoteAddr => $cidr) {
+            $middleware = new IPAddress(true, [$cidr]);
+            $env = [
+                'REMOTE_ADDR' => $remoteAddr,
+                'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+            ];
+            $ipAddress = $this->simpleRequest($middleware, $env);
+            $this->assertNotSame('123.4.5.6', $ipAddress, "Testing CIDR: $cidr");
+        }
+    }
+
+    public function testIp4WildcardMatch()
+    {
+        $positiveMatches = [
+            '10.0.8.23' => '10.0.*.*',
+            '10.0.238.184' => '10.0.238.*',
+            '10.0.128.129' => '10.0.*.129',
+            '10.76.32.129' => '10.*.32.129',
+            '10.0.160.10' => '*.0.160.*',
+            '10.0.160.9' => '*.*.160.*',
+        ];
+        foreach ($positiveMatches as $remoteAddr => $wildcard) {
+            $middleware = new IPAddress(true, [$wildcard]);
+            $env = [
+                'REMOTE_ADDR' => $remoteAddr,
+                'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+            ];
+            $ipAddress = $this->simpleRequest($middleware, $env);
+            $this->assertSame('123.4.5.6', $ipAddress, "Testing wildcard: $wildcard");
+        }
+
+        $negativeMatches = [
+            '9.0.8.23' => '10.0.*.*',
+            '10.0.234.0' => '10.0.238.*',
+            '10.1.128.129' => '10.0.*.129',
+            '10.0.32.128' => '10.*.32.129',
+            '214.0.16.10' => '*.0.160.*',
+            '10.0.150.9' => '*.*.160.*',
+            '10:0:150:9:A:A:A:A' => '*.*.160.*',
+        ];
+        foreach ($negativeMatches as $remoteAddr => $wildcard) {
+            $middleware = new IPAddress(true, [$wildcard]);
+            $env = [
+                'REMOTE_ADDR' => $remoteAddr,
+                'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+            ];
+            $ipAddress = $this->simpleRequest($middleware, $env);
+            $this->assertNotSame('123.4.5.6', $ipAddress, "Testing wildcard: $wildcard");
+        }
     }
 
     public function testIpIsNullIfMissing()
     {
         $middleware = new IPAddress();
-
-        $request = ServerRequestFactory::fromGlobals();
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        $ipAddress = $this->simpleRequest($middleware, []);
 
         $this->assertNull($ipAddress);
     }
@@ -72,19 +131,11 @@ class RendererTest extends TestCase
     public function testXForwardedForIp()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -92,19 +143,11 @@ class RendererTest extends TestCase
     public function testXForwardedForIpWithPort()
     {
         $middleware = new IPAddress(true, ['192.168.1.1']);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1:81',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3:81, 192.168.1.2:81, 192.168.1.1:81'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -112,19 +155,11 @@ class RendererTest extends TestCase
     public function testProxyIpIsIgnored()
     {
         $middleware = new IPAddress();
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.0.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.0.1', $ipAddress);
     }
@@ -132,19 +167,11 @@ class RendererTest extends TestCase
     public function testHttpClientIp()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_CLIENT_IP' => '192.168.1.3'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -152,19 +179,11 @@ class RendererTest extends TestCase
     public function testXForwardedForIpV6()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '001:DB8::21f:5bff:febf:ce22:8a2e'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('001:DB8::21f:5bff:febf:ce22:8a2e', $ipAddress);
     }
@@ -172,19 +191,11 @@ class RendererTest extends TestCase
     public function testXForwardedForWithInvalidIp()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => 'foo-bar'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -192,19 +203,11 @@ class RendererTest extends TestCase
     public function testXForwardedForIpWithTrustedProxy()
     {
         $middleware = new IPAddress(true, ['192.168.0.1', '192.168.0.2']);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.0.2',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.3', $ipAddress);
     }
@@ -212,19 +215,11 @@ class RendererTest extends TestCase
     public function testXForwardedForIpWithUntrustedProxy()
     {
         $middleware = new IPAddress(true, ['192.168.0.1']);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.0.2',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.0.2', $ipAddress);
     }
@@ -232,19 +227,11 @@ class RendererTest extends TestCase
     public function testForwardedWithMultipleFor()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'for=192.0.2.43, for=198.51.100.17;by=203.0.113.60;proto=http;host=example.com',
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.0.2.43', $ipAddress);
     }
@@ -252,19 +239,11 @@ class RendererTest extends TestCase
     public function testForwardedWithAllOptions()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'for=192.0.2.60; proto=http;by=203.0.113.43; host=_hiddenProxy, for=192.0.2.61',
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.0.2.60', $ipAddress);
     }
@@ -272,19 +251,11 @@ class RendererTest extends TestCase
     public function testForwardedWithWithIpV6()
     {
         $middleware = new IPAddress(true, []);
-
-        $request = ServerRequestFactory::fromGlobals([
+        $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", for=_internalProxy',
-        ]);
-        $response = new Response();
-
-        $ipAddress = '123';
-        $response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
-            // simply store the "ip_address" attribute in to the referenced $ipAddress
-            $ipAddress = $request->getAttribute('ip_address');
-            return $response;
-        });
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('2001:db8:cafe::17', $ipAddress);
     }
