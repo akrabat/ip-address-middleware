@@ -29,6 +29,20 @@ class IpAddress implements MiddlewareInterface
     protected $trustedProxies;
 
     /**
+     * List of trusted proxy IP wildcard ranges
+     *
+     * @var array
+     */
+    protected $trustedWildcard;
+
+    /**
+     * List of trusted proxy IP CIDR ranges
+     *
+     * @var array
+     */
+    protected $trustedCidr;
+
+    /**
      * Name of the attribute added to the ServerRequest object
      *
      * @var string
@@ -67,7 +81,26 @@ class IpAddress implements MiddlewareInterface
         }
 
         $this->checkProxyHeaders = $checkProxyHeaders;
-        $this->trustedProxies = $trustedProxies;
+
+        if ($trustedProxies) foreach ($trustedProxies as $proxy) {
+            if (strpos($proxy, '*') !== false) {
+                // Wildcard IP address
+                $delim = strpos($proxy, '.') > 0 ? '.' : ':';
+                // IPv6 is 8 parts separated by ':'
+                $this->trustedWildcard[] = explode($delim, $proxy, 7);
+            } elseif (strpos($proxy, '/') > 6) {
+                // CIDR notation
+                list($subnet, $bits) = explode('/', $proxy, 2);
+                $subnet = ip2long($subnet);
+                $mask = -1 << (32 - $bits);
+                $min = $subnet & $mask;
+                $max = $subnet | ~$mask;
+                $this->trustedCidr[] = [$min, $max];
+            } else {
+                // String-match IP address
+                $this->trustedProxies[] = $proxy;
+            }
+        }
 
         if ($attributeName) {
             $this->attributeName = $attributeName;
@@ -132,9 +165,47 @@ class IpAddress implements MiddlewareInterface
         }
 
         $checkProxyHeaders = $this->checkProxyHeaders;
-        if ($checkProxyHeaders && !empty($this->trustedProxies)) {
-            if (!in_array($ipAddress, $this->trustedProxies)) {
+        if ($checkProxyHeaders) {
+            // Exact Match
+            if ($this->trustedProxies && !in_array($ipAddress, $this->trustedProxies)) {
                 $checkProxyHeaders = false;
+            }
+
+            // Wildcard Match
+            if ($checkProxyHeaders && $this->trustedWildcard) {
+                $checkProxyHeaders = false;
+                // IPv4 has 4 parts separated by '.'
+                // IPv6 has 8 parts separated by ':'
+                $delim = strpos($ipAddress, '.') > 0 ? '.' : ':';
+                $parts = $delim === '.' ? 4 : 8;
+                $ipAddrParts = explode($delim, $ipAddress, $parts);
+                foreach ($this->trustedWildcard as $proxy) {
+                    if (count($proxy) !== $parts) {
+                        continue; // IP version does not match
+                    }
+                    foreach ($proxy as $i => $part) {
+                        if ($part !== '*' && $part !== $ipAddrParts[$i]) {
+                            break 2;// IP does not match, move to next proxy
+                        }
+                    }
+                    $checkProxyHeaders = true;
+                    break;
+                }
+            }
+
+            // CIDR Match
+            if ($checkProxyHeaders && $this->trustedCidr) {
+                $checkProxyHeaders = false;
+                // Only IPv4 is supported for CIDR matching
+                $ipAsLong = ip2long($ipAddress);
+                if ($ipAsLong) {
+                    foreach ($this->trustedCidr as $proxy) {
+                        if ($proxy[0] <= $ipAsLong && $ipAsLong <= $proxy[1]) {
+                            $checkProxyHeaders = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
