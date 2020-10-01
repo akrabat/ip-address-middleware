@@ -5,6 +5,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use \Exception;
 
 class IpAddress implements MiddlewareInterface
 {
@@ -82,7 +83,9 @@ class IpAddress implements MiddlewareInterface
      *
      * Set the "$attributeName" attribute to the client's IP address as determined from
      * the proxy header (X-Forwarded-For or from $_SERVER['REMOTE_ADDR']
-     */
+	 *
+	 * @throws Exception
+	 */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $ipAddress = $this->determineClientIpAddress($request);
@@ -100,7 +103,8 @@ class IpAddress implements MiddlewareInterface
      * @param callable $next                  Next middleware
      *
      * @return ResponseInterface
-     */
+	 * @throws Exception
+	 */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, $next)
     {
         if (!$next) {
@@ -118,7 +122,8 @@ class IpAddress implements MiddlewareInterface
      *
      * @param  ServerRequestInterface $request PSR-7 Request
      * @return string
-     */
+	 * @throws Exception
+	 */
     protected function determineClientIpAddress($request)
     {
         $ipAddress = null;
@@ -131,14 +136,7 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        $checkProxyHeaders = $this->checkProxyHeaders;
-        if ($checkProxyHeaders && !empty($this->trustedProxies)) {
-            if (!in_array($ipAddress, $this->trustedProxies)) {
-                $checkProxyHeaders = false;
-            }
-        }
-
-        if ($checkProxyHeaders) {
+        if ($this->checkProxyHeaders && $this->checkTrustedProxies($ipAddress)) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
                     $ip = $this->getFirstIpAddressFromHeader($request, $header);
@@ -152,6 +150,50 @@ class IpAddress implements MiddlewareInterface
 
         return $ipAddress;
     }
+
+	/**
+	 * See if given ipAddress is trusted. Supporting CIDR now.
+	 * If no trustedProxies are given, return true.
+	 *
+	 * @param string $ipAddress
+	 * @return bool
+	 * @throws Exception
+	 */
+    private function checkTrustedProxies(string $ipAddress):bool
+	{
+		if (empty($this->trustedProxies)) return true;
+		foreach($this->trustedProxies as $i => $proxy) {
+			$parts = explode('/', $proxy);
+			switch (count($parts)) {
+				case 1:
+					if ($proxy === $ipAddress) return true;
+					break;
+				case 2:
+					if ($this->addressInNetwork($ipAddress, $parts[0], $parts[1])) return true;
+					break;
+				default:
+					throw new Exception('Wrong ip address format in trustedProxies on index ' . $i);
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param string $ipAddress
+	 * @param string $network
+	 * @param int $width
+	 * @return bool
+	 */
+	private function addressInNetwork(string $ipAddress, string $network, int $width):bool
+	{
+		// Not really needed, but more efficient...
+		if ($width === 32) {
+			return $network === $ipAddress;
+		}
+		// Do the math for all other cases
+		$mask = ~ ((1 << (32 - $width)) - 1);
+		return (ip2long($ipAddress) & $mask) == (ip2long($network) & $mask);
+	}
 
     /**
      * Remove port from IPV4 address if it exists

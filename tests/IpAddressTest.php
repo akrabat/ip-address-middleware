@@ -4,15 +4,10 @@ namespace RKA\Middleware\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use RKA\Middleware\IpAddress;
-use RuntimeException;
 use Zend\Diactoros\Response;
-use Zend\Diactoros\ServerRequest;
 use Zend\Diactoros\ServerRequestFactory;
-use Zend\Diactoros\Stream;
-use Zend\Diactoros\Uri;
 
 class RendererTest extends TestCase
 {
@@ -229,6 +224,84 @@ class RendererTest extends TestCase
         $this->assertSame('192.168.0.2', $ipAddress);
     }
 
+	/**
+	 * @dataProvider providerTrustedProxyWithCIDR
+	 * @param array $proxies
+	 * @param string $forwardFor
+	 * @param string $ip
+	 * @param string $expect
+	 * @param string $expectedException = ''
+	 * @throws \Exception
+	 */
+	public function testTrustedProxyWithCIDR(array $proxies, string $forwardFor, string $ip, string $expect, string $expectedException = '')
+	{
+		if ($expectedException) {
+			$this->expectException($expectedException);
+		}
+
+		$middleware = new IPAddress(true, $proxies);
+
+		$request = ServerRequestFactory::fromGlobals(
+			[
+					'REMOTE_ADDR' => $ip,
+					'HTTP_X_FORWARDED_FOR' => $forwardFor
+			]);
+		$response = new Response();
+
+		$ipAddress = '';
+		$response  = $middleware($request, $response, function ($request, $response) use (&$ipAddress) {
+			// simply store the "ip_address" attribute in to the referenced $ipAddress
+			$ipAddress = $request->getAttribute('ip_address');
+			return $response;
+		});
+
+		if (!$expectedException) {
+			$this->assertSame($expect, $ipAddress);
+		}
+	}
+
+	public function providerTrustedProxyWithCIDR():array
+	{
+		return [
+			'match-first-proxy-32' => [
+				'proxies' => ['192.168.0.1/32', '192.168.0.2/32'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '192.168.0.1',
+				'expect' => '192.168.1.3'
+			],
+			'no-match-first-proxy-32' => [
+				'proxies' => ['192.168.0.1/32', '192.168.0.2/32'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '192.168.0.3',
+				'expect' => '192.168.0.3'
+			],
+			'match-first-proxy-16' => [
+				'proxies' => ['192.168.0.0/16', '10.168.0.2'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '192.168.255.1',
+				'expect' => '192.168.1.3'
+			],
+			'no-match-first-proxy-16' => [
+				'proxies' => ['192.168.0.0/16', '10.168.0.2'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '192.169.255.1',
+				'expect' => '192.169.255.1'
+			],
+			'match-second-proxy-8' => [
+				'proxies' => ['192.168.0.0/24', '10.0.0.0/8'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '10.168.255.1',
+				'expect' => '192.168.1.3'
+			],
+			'exception-wrong-format' => [
+				'proxies' => ['192.168.0.0/24/8'],
+				'forwardFor' => '192.168.1.3',
+				'ip' => '10.168.255.1',
+				'expect' => '',
+				'expectedException' => \Exception::class
+			],
+		];
+	}
     public function testForwardedWithMultipleFor()
     {
         $middleware = new IPAddress(true, []);
