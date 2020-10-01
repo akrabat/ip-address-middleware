@@ -161,15 +161,21 @@ class IpAddress implements MiddlewareInterface
      */
     private function checkTrustedProxies(string $ipAddress):bool
     {
-        if (empty($this->trustedProxies)) return true;
-        foreach($this->trustedProxies as $i => $proxy) {
+        if (empty($this->trustedProxies)) {
+            return true;
+        }
+        foreach ($this->trustedProxies as $i => $proxy) {
             $parts = explode('/', $proxy);
             switch (count($parts)) {
                 case 1:
-                    if ($proxy === $ipAddress) return true;
+                    if ($proxy === $ipAddress) {
+                        return true;
+                    }
                     break;
                 case 2:
-                    if ($this->addressInNetwork($ipAddress, $parts[0], $parts[1])) return true;
+                    if ($this->addressInNetwork($ipAddress, $parts[0], $parts[1])) {
+                        return true;
+                    }
                     break;
                 default:
                     throw new Exception('Wrong ip address format in trustedProxies on index ' . $i);

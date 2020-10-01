@@ -233,8 +233,13 @@ class RendererTest extends TestCase
      * @param string $expectedException = ''
      * @throws \Exception
      */
-    public function testTrustedProxyWithCIDR(array $proxies, string $forwardFor, string $ip, string $expect, string $expectedException = '')
-    {
+    public function testTrustedProxyWithCIDR(
+        array $proxies,
+        string $forwardFor,
+        string $ip,
+        string $expect,
+        string $expectedException = ''
+    ) {
         if ($expectedException) {
             $this->expectException($expectedException);
         }
@@ -243,9 +248,10 @@ class RendererTest extends TestCase
 
         $request = ServerRequestFactory::fromGlobals(
             [
-                    'REMOTE_ADDR' => $ip,
-                    'HTTP_X_FORWARDED_FOR' => $forwardFor
-            ]);
+                'REMOTE_ADDR' => $ip,
+                'HTTP_X_FORWARDED_FOR' => $forwardFor
+            ]
+        );
         $response = new Response();
 
         $ipAddress = '';
