@@ -15,7 +15,7 @@ Note that the proxy headers are only checked if the first parameter to the const
 
 **Trusted Proxies**
 
-If you configure to check the proxy headers (first parameter is `true`), you have to provide an array of trusted proxies as the second parameter. If the array is empty, the proxy headers will always be evaluated. If the array is not empty, it must contain strings with IP addresses, one of them must be the `$_SERVER['REMOTE_ADDR']` variable in order to allow evaluating the proxy headers - otherwise the `REMOTE_ADDR` itself is returned.
+If you configure to check the proxy headers (first parameter is `true`), you have to provide an array of trusted proxies as the second parameter. If the array is empty, the proxy headers will always be evaluated. If the array is not empty, it must contain strings with IP addresses or networks in CIDR-notation. One of them must match the `$_SERVER['REMOTE_ADDR']` variable in order to allow evaluating the proxy headers - otherwise the `REMOTE_ADDR` itself is returned.
 
 **Attribute name**
 
