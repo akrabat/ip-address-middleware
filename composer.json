@@ -1,5 +1,5 @@
 {
-    "name": "akrabat/ip-address-middleware",
+    "name": "pmous/ip-address-middleware",
     "description": "PSR-15 middleware that determines the client IP address and stores it as a ServerRequest attribute",
     "keywords": [
         "psr7", "middleware", "ip"
@@ -12,9 +12,15 @@
             "name": "Rob Allen",
             "email": "rob@akrabat.com",
             "homepage": "http://akrabat.com"
-        }
-    ],
+        },
+		{
+			"name": "Paul Mourus",
+			"email": "mous@myndr.nl",
+			"homepage": "https://myndr.nl"
+		}
+	],
     "replace": {
+		"akrabat/ip-address-middleware": "*",
         "akrabat/rka-ip-address-middleware": "*"
     },
     "require": {
