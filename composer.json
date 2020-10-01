@@ -13,14 +13,14 @@
             "email": "rob@akrabat.com",
             "homepage": "http://akrabat.com"
         },
-		{
-			"name": "Paul Mourus",
-			"email": "mous@myndr.nl",
-			"homepage": "https://myndr.nl"
-		}
-	],
+        {
+            "name": "Paul Mourus",
+            "email": "mous@myndr.nl",
+            "homepage": "https://myndr.nl"
+        }
+    ],
     "replace": {
-		"akrabat/ip-address-middleware": "*",
+        "akrabat/ip-address-middleware": "*",
         "akrabat/rka-ip-address-middleware": "*"
     },
     "require": {
