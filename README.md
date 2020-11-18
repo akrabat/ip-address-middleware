@@ -78,6 +78,13 @@ $app->get('/', function ($request, $response, $args) {
 });
 ```
 
+In Laminas, add to your `pipeline.php` config at the correct stage, usually just before the `DispatchMiddleware`:
+```php
+# config/pipeline.php
+# using default config
+$app->add(RKA\Middleware\IpAddress::class);
+```
+
 ## Testing
 
 * Code style: ``$ vendor/bin/phpcs``
