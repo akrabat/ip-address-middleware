@@ -172,16 +172,15 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        $checkProxyHeaders = $this->checkProxyHeaders;
-        if ($checkProxyHeaders) {
+        $checkProxyHeaders = false;
+        if ($this->checkProxyHeaders) {
             // Exact Match
-            if ($this->trustedProxies && !in_array($ipAddress, $this->trustedProxies)) {
-                $checkProxyHeaders = false;
+            if ($this->trustedProxies && in_array($ipAddress, $this->trustedProxies)) {
+                $checkProxyHeaders = true;
             }
 
             // Wildcard Match
-            if ($checkProxyHeaders && $this->trustedWildcard) {
-                $checkProxyHeaders = false;
+            if ($this->checkProxyHeaders && $this->trustedWildcard) {
                 // IPv4 has 4 parts separated by '.'
                 // IPv6 has 8 parts separated by ':'
                 if (strpos($ipAddress, '.') > 0) {
@@ -196,19 +195,22 @@ class IpAddress implements MiddlewareInterface
                     if (count($proxy) !== $parts) {
                         continue; // IP version does not match
                     }
+                    $match = true;
                     foreach ($proxy as $i => $part) {
                         if ($part !== '*' && $part !== $ipAddrParts[$i]) {
-                            break 2;// IP does not match, move to next proxy
+                            $match = false;
+                            break;// IP does not match, move to next proxy
                         }
                     }
-                    $checkProxyHeaders = true;
-                    break;
+                    if ($match) {
+                        $checkProxyHeaders = true;
+                        break;
+                    }
                 }
             }
 
             // CIDR Match
-            if ($checkProxyHeaders && $this->trustedCidr) {
-                $checkProxyHeaders = false;
+            if ($this->checkProxyHeaders && $this->trustedCidr) {
                 // Only IPv4 is supported for CIDR matching
                 $ipAsLong = ip2long($ipAddress);
                 if ($ipAsLong) {
@@ -220,15 +222,19 @@ class IpAddress implements MiddlewareInterface
                     }
                 }
             }
-        }
 
-        if ($checkProxyHeaders) {
-            foreach ($this->headersToInspect as $header) {
-                if ($request->hasHeader($header)) {
-                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
-                    if ($this->isValidIpAddress($ip)) {
-                        $ipAddress = $ip;
-                        break;
+            if (!$this->trustedProxies && !$this->trustedWildcard && !$this->trustedCidr) {
+                $checkProxyHeaders = true;
+            }
+
+            if ($checkProxyHeaders) {
+                foreach ($this->headersToInspect as $header) {
+                    if ($request->hasHeader($header)) {
+                        $ip = $this->getFirstIpAddressFromHeader($request, $header);
+                        if ($this->isValidIpAddress($ip)) {
+                            $ipAddress = $ip;
+                            break;
+                        }
                     }
                 }
             }
