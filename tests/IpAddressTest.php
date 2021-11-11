@@ -316,6 +316,53 @@ class RendererTest extends TestCase
         $this->assertSame("Hello World", (string) $response->getBody());
     }
 
+    public function testIpCidrListMatch()
+    {
+        $matches = [
+            '192.16.238.184/24', // negative match
+            '10.11.0.0/16', // positive match
+        ];
+        $middleware = new IPAddress(true, $matches);
+        $env = [
+            'REMOTE_ADDR' => '10.11.156.95',
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+        $this->assertSame('123.4.5.6', $ipAddress, "Testing CIDR: " . implode(', ', $matches));
+    }
+
+    public function testIp4WildcardsMatch()
+    {
+        $matches = [
+            '192.168.*.*', // negative match
+            '10.0.238.*', // negative match
+            '10.11.*.*', // positive match
+        ];
+        $middleware = new IPAddress(true, $matches);
+        $env = [
+            'REMOTE_ADDR' => '10.11.156.95',
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+        $this->assertSame('123.4.5.6', $ipAddress, "Testing wildcard: " . implode(', ', $matches));
+    }
+
+    public function testIp4MultipleTypesMatch()
+    {
+        $matches = [
+            '192.168.0.1', // negative match
+            '10.0.238.*', // negative match
+            '10.11.0.0/16', // positive match
+        ];
+        $middleware = new IPAddress(true, $matches);
+        $env = [
+            'REMOTE_ADDR' => '10.11.156.95',
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+        $this->assertSame('123.4.5.6', $ipAddress, "Testing proxies: " . implode(', ', $matches));
+    }
+
     public function testNotGivingAProxyListShouldThrowException()
     {
         $this->expectException(\InvalidArgumentException::class);
