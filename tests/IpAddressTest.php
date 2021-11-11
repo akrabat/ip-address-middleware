@@ -128,6 +128,17 @@ class RendererTest extends TestCase
         $this->assertNull($ipAddress);
     }
 
+    public function testIpIsNullIfMissingAndProxiesAreConfigured()
+    {
+        error_reporting(-1);
+        $middleware = new IPAddress(true, ['*'], 'IP');
+        $env = [];
+        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
+
+        $this->assertSame(null, $ipAddress);
+    }
+
+
     public function testXForwardedForIp()
     {
         $middleware = new IPAddress(true, []);

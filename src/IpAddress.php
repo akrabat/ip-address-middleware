@@ -162,7 +162,7 @@ class IpAddress implements MiddlewareInterface
      */
     protected function determineClientIpAddress($request)
     {
-        $ipAddress = null;
+        $ipAddress = '';
 
         $serverParams = $request->getServerParams();
         if (isset($serverParams['REMOTE_ADDR'])) {
@@ -232,6 +232,10 @@ class IpAddress implements MiddlewareInterface
                     }
                 }
             }
+        }
+
+        if (empty($ipAddress)) {
+            $ipAddress = null;
         }
 
         return $ipAddress;
