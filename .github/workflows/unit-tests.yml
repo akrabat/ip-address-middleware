@@ -12,9 +12,6 @@ jobs:
 
     strategy:
       matrix:
-        dependencies:
-          - "lowest"
-          - "highest"
         php-version:
           - "7.2"
           - "7.3"
@@ -44,15 +41,10 @@ jobs:
           path: |
             ~/.composer/cache
             vendor
-          key: "php-${{ matrix.php-version }}-${{ matrix.dependencies }}"
-          restore-keys: "php-${{ matrix.php-version }}-${{ matrix.dependencies }}"
-
-      - name: "Install lowest dependencies"
-        if: ${{ matrix.dependencies == 'lowest' }}
-        run: "composer update --prefer-lowest --no-interaction --no-progress --no-suggest"
+          key: "php-${{ matrix.php-version }}"
+          restore-keys: "php-${{ matrix.php-version }}"
 
       - name: "Install highest dependencies"
-        if: ${{ matrix.dependencies == 'highest' }}
         run: "composer update --no-interaction --no-progress --no-suggest"
 
       - name: "Tests"
