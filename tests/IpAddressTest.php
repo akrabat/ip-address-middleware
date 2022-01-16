@@ -276,7 +276,7 @@ class RendererTest extends TestCase
         $headersToInspect = [
             'Foo-Bar'
         ];
-        $middleware = new IPAddress(true, [], null, $headersToInspect);
+        $middleware = new IPAddress(true, [], '', $headersToInspect);
 
         $request = ServerRequestFactory::fromGlobals([
             'REMOTE_ADDR' => '192.168.0.1',

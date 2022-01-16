@@ -73,7 +73,7 @@ class IpAddress implements MiddlewareInterface
     public function __construct(
         bool $checkProxyHeaders = false,
         array $trustedProxies = null,
-        $attributeName = null,
+        string $attributeName = '',
         array $headersToInspect = []
     ) {
         if ($checkProxyHeaders && $trustedProxies === null) {
@@ -110,7 +110,7 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        if ($attributeName) {
+        if (!empty($attributeName)) {
             $this->attributeName = $attributeName;
         }
 
