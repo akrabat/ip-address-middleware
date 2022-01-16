@@ -69,6 +69,7 @@ class IpAddress implements MiddlewareInterface
      * @param array $trustedProxies   List of IP addresses of trusted proxies
      * @param string $attributeName   Name of attribute added to ServerRequest object
      * @param array $headersToInspect List of headers to inspect
+     * @throws \InvalidArgumentException
      */
     public function __construct(
         bool $checkProxyHeaders = false,
