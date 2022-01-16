@@ -9,7 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use RKA\Middleware\IpAddress;
 
-class RendererTest extends TestCase
+class IpAddressTest extends TestCase
 {
     private function simpleRequest(IPAddress $middleware, $env, $attrName = 'ip_address')
     {
