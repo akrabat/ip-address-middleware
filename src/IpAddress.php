@@ -71,7 +71,7 @@ class IpAddress implements MiddlewareInterface
      * @param array $headersToInspect List of headers to inspect
      */
     public function __construct(
-        $checkProxyHeaders = false,
+        bool $checkProxyHeaders = false,
         array $trustedProxies = null,
         $attributeName = null,
         array $headersToInspect = []
