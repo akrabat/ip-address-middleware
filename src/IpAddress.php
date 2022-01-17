@@ -110,6 +110,15 @@ class IpAddress implements MiddlewareInterface
             $this->attributeName = $attributeName;
         }
 
+        $this->initHeadersToInspect($headersToInspect);
+    }
+
+    /**
+     * @param array $headersToInspect
+     * @return void
+     */
+    private function initHeadersToInspect(array $headersToInspect): void
+    {
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
         }
