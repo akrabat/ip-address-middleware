@@ -138,7 +138,6 @@ class RendererTest extends TestCase
         $this->assertSame(null, $ipAddress);
     }
 
-
     public function testXForwardedForIp()
     {
         $middleware = new IPAddress(true, []);
