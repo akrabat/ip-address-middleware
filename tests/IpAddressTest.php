@@ -140,7 +140,7 @@ class RendererTest extends TestCase
 
     public function testXForwardedForIp()
     {
-        $middleware = new IPAddress(true, []);
+        $middleware = new IPAddress(true, ['192.168.1.*']);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
@@ -152,7 +152,7 @@ class RendererTest extends TestCase
 
     public function testXForwardedForIpWithPort()
     {
-        $middleware = new IPAddress(true, ['192.168.1.1']);
+        $middleware = new IPAddress(true, ['192.168.1.*']);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1:81',
             'HTTP_X_FORWARDED_FOR' => '192.168.1.3:81, 192.168.1.2:81, 192.168.1.1:81'
