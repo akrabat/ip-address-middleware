@@ -11,7 +11,7 @@ The constructor takes 4 parameters which can be used to configure this middlewar
 
 **Check proxy headers**
 
-Note that the proxy headers are only checked if the first parameter to the constructor is set to `true`. If set to false, then only `$_SERVER['REMOTE_ADDR']` is used.
+Note that the proxy headers are only checked if the first parameter to the constructor is set to `true`. If it is set to `false`, then only `$_SERVER['REMOTE_ADDR']` is used.
 
 **Trusted Proxies**
 
