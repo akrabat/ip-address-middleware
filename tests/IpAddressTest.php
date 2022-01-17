@@ -361,10 +361,4 @@ class RendererTest extends TestCase
         $ipAddress = $this->simpleRequest($middleware, $env);
         $this->assertSame('123.4.5.6', $ipAddress, "Testing proxies: " . implode(', ', $matches));
     }
-
-    public function testNotGivingAProxyListShouldThrowException()
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        new IpAddress(true);
-    }
 }
