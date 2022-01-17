@@ -293,7 +293,6 @@ class IpAddressTest extends TestCase
         $this->assertSame('192.168.1.3', $ipAddress);
     }
 
-
     public function testPSR15()
     {
         $middleware = new IPAddress();
