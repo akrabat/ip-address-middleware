@@ -186,6 +186,18 @@ class RendererTest extends TestCase
         $this->assertSame('192.168.1.3', $ipAddress);
     }
 
+    public function testXForwardedForIpV4()
+    {
+        $middleware = new IPAddress(true, []);
+        $env = [
+            'REMOTE_ADDR' => '123.4.5.6',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.1'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('192.168.1.1', $ipAddress);
+    }
+
     public function testXForwardedForIpV6()
     {
         $middleware = new IPAddress(true, []);
