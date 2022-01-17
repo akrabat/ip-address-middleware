@@ -116,10 +116,6 @@ class IpAddress implements MiddlewareInterface
         }
     }
 
-        $this->initAttributeName($attributeName);
-        $this->initHeadersToInspect($headersToInspect);
-    }
-
     /**
      * @param string $attributeName
      * @return void
