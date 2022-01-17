@@ -78,33 +78,43 @@ class IpAddress implements MiddlewareInterface
     ) {
         $this->checkProxyHeaders = $checkProxyHeaders;
 
-        if ($trustedProxies) {
-            foreach ($trustedProxies as $proxy) {
-                if (strpos($proxy, '*') !== false) {
-                    // Wildcard IP address
-                    // IPv6 is 8 parts separated by ':'
-                    if (strpos($proxy, '.') > 0) {
-                        $delim = '.';
-                        $parts = 4;
-                    } else {
-                        $delim = ':';
-                        $parts = 8;
-                    }
-                    $this->trustedWildcard[] = explode($delim, $proxy, $parts);
-                } elseif (strpos($proxy, '/') > 6) {
-                    // CIDR notation
-                    list($subnet, $bits) = explode('/', $proxy, 2);
-                    $subnet = ip2long($subnet);
-                    $mask = -1 << (32 - $bits);
-                    $min = $subnet & $mask;
-                    $max = $subnet | ~$mask;
-                    $this->trustedCidr[] = [$min, $max];
+        $this->initTrustedProxies($trustedProxies);
+        $this->initAttributeName($attributeName);
+        $this->initHeadersToInspect($headersToInspect);
+    }
+
+    /**
+     * @param array $trustedProxies
+     * @return void
+     */
+    private function initTrustedProxies(array $trustedProxies): void
+    {
+        foreach ($trustedProxies as $proxy) {
+            if (strpos($proxy, '*') !== false) {
+                // Wildcard IP address
+                // IPv6 is 8 parts separated by ':'
+                if (strpos($proxy, '.') > 0) {
+                    $delim = '.';
+                    $parts = 4;
                 } else {
-                    // String-match IP address
-                    $this->trustedProxies[] = $proxy;
+                    $delim = ':';
+                    $parts = 8;
                 }
+                $this->trustedWildcard[] = explode($delim, $proxy, $parts);
+            } elseif (strpos($proxy, '/') > 6) {
+                // CIDR notation
+                list($subnet, $bits) = explode('/', $proxy, 2);
+                $subnet = ip2long($subnet);
+                $mask = -1 << (32 - $bits);
+                $min = $subnet & $mask;
+                $max = $subnet | ~$mask;
+                $this->trustedCidr[] = [$min, $max];
+            } else {
+                // String-match IP address
+                $this->trustedProxies[] = $proxy;
             }
         }
+    }
 
         $this->initAttributeName($attributeName);
         $this->initHeadersToInspect($headersToInspect);
