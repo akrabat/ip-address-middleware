@@ -162,7 +162,7 @@ class RendererTest extends TestCase
         $this->assertSame('192.168.1.3', $ipAddress);
     }
 
-    public function testProxyIpIsIgnored()
+    public function testProxyIpIsIgnoredWhenNoTrustedProxiesSet()
     {
         $middleware = new IPAddress();
         $env = [
