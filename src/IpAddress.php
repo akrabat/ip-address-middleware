@@ -86,15 +86,7 @@ class IpAddress implements MiddlewareInterface
             foreach ($trustedProxies as $proxy) {
                 if (strpos($proxy, '*') !== false) {
                     // Wildcard IP address
-                    // IPv6 is 8 parts separated by ':'
-                    if (strpos($proxy, '.') > 0) {
-                        $delim = '.';
-                        $parts = 4;
-                    } else {
-                        $delim = ':';
-                        $parts = 8;
-                    }
-                    $this->trustedWildcards[] = explode($delim, $proxy, $parts);
+                    $this->trustedWildcards[] = $this->parseWildcard($proxy);
                 } elseif (strpos($proxy, '/') > 6) {
                     // CIDR notation
                     list($subnet, $bits) = explode('/', $proxy, 2);
@@ -117,6 +109,25 @@ class IpAddress implements MiddlewareInterface
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
         }
+    }
+
+    /**
+     * @param string $ipAddress
+     * @return array
+     */
+    private function parseWildcard(string $ipAddress)
+    {
+        // IPv4 has 4 parts separated by '.'
+        // IPv6 has 8 parts separated by ':'
+        if (strpos($ipAddress, '.') > 0) {
+            $delim = '.';
+            $parts = 4;
+        } else {
+            $delim = ':';
+            $parts = 8;
+        }
+
+        return explode($delim, $ipAddress, $parts);
     }
 
     /**
