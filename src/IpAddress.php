@@ -89,12 +89,7 @@ class IpAddress implements MiddlewareInterface
                     $this->trustedWildcards[] = $this->parseWildcard($proxy);
                 } elseif (strpos($proxy, '/') > 6) {
                     // CIDR notation
-                    list($subnet, $bits) = explode('/', $proxy, 2);
-                    $subnet = ip2long($subnet);
-                    $mask = -1 << (32 - $bits);
-                    $min = $subnet & $mask;
-                    $max = $subnet | ~$mask;
-                    $this->trustedCidrs[] = [$min, $max];
+                    $this->trustedCidrs[] = $this->parseCidr($proxy);
                 } else {
                     // String-match IP address
                     $this->trustedProxies[] = $proxy;
@@ -128,6 +123,21 @@ class IpAddress implements MiddlewareInterface
         }
 
         return explode($delim, $ipAddress, $parts);
+    }
+
+    /**
+     * @param string $ipAddress
+     * @return array
+     */
+    private function parseCidr(string $ipAddress)
+    {
+        list($subnet, $bits) = explode('/', $ipAddress, 2);
+        $subnet = ip2long($subnet);
+        $mask = -1 << (32 - $bits);
+        $min = $subnet & $mask;
+        $max = $subnet | ~$mask;
+
+        return [$min, $max];
     }
 
     /**
