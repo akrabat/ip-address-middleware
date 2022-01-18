@@ -33,7 +33,7 @@ class IpAddress implements MiddlewareInterface
      *
      * @var array
      */
-    protected $trustedWildcard;
+    protected $trustedWildcards;
 
     /**
      * List of trusted proxy IP CIDR ranges
@@ -94,7 +94,7 @@ class IpAddress implements MiddlewareInterface
                         $delim = ':';
                         $parts = 8;
                     }
-                    $this->trustedWildcard[] = explode($delim, $proxy, $parts);
+                    $this->trustedWildcards[] = explode($delim, $proxy, $parts);
                 } elseif (strpos($proxy, '/') > 6) {
                     // CIDR notation
                     list($subnet, $bits) = explode('/', $proxy, 2);
@@ -181,7 +181,7 @@ class IpAddress implements MiddlewareInterface
             }
 
             // Wildcard Match
-            if ($this->checkProxyHeaders && $this->trustedWildcard) {
+            if ($this->checkProxyHeaders && $this->trustedWildcards) {
                 // IPv4 has 4 parts separated by '.'
                 // IPv6 has 8 parts separated by ':'
                 if (strpos($ipAddress, '.') > 0) {
@@ -193,7 +193,7 @@ class IpAddress implements MiddlewareInterface
                 }
 
                 $ipAddrParts = explode($delim, $ipAddress, $parts);
-                foreach ($this->trustedWildcard as $proxy) {
+                foreach ($this->trustedWildcards as $proxy) {
                     if (count($proxy) !== $parts) {
                         continue; // IP version does not match
                     }
@@ -225,7 +225,7 @@ class IpAddress implements MiddlewareInterface
                 }
             }
 
-            if (!$this->trustedProxies && !$this->trustedWildcard && !$this->trustedCidr) {
+            if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidr) {
                 $checkProxyHeaders = true;
             }
 
