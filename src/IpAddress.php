@@ -113,6 +113,7 @@ class IpAddress implements MiddlewareInterface
         if ($attributeName) {
             $this->attributeName = $attributeName;
         }
+
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
         }
@@ -190,6 +191,7 @@ class IpAddress implements MiddlewareInterface
                     $delim = ':';
                     $parts = 8;
                 }
+
                 $ipAddrParts = explode($delim, $ipAddress, $parts);
                 foreach ($this->trustedWildcard as $proxy) {
                     if (count($proxy) !== $parts) {
@@ -279,6 +281,7 @@ class IpAddress implements MiddlewareInterface
         if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) {
             return false;
         }
+
         return true;
     }
 
