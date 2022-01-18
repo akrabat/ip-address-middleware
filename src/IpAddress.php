@@ -40,7 +40,7 @@ class IpAddress implements MiddlewareInterface
      *
      * @var array
      */
-    protected $trustedCidr;
+    protected $trustedCidrs;
 
     /**
      * Name of the attribute added to the ServerRequest object
@@ -102,7 +102,7 @@ class IpAddress implements MiddlewareInterface
                     $mask = -1 << (32 - $bits);
                     $min = $subnet & $mask;
                     $max = $subnet | ~$mask;
-                    $this->trustedCidr[] = [$min, $max];
+                    $this->trustedCidrs[] = [$min, $max];
                 } else {
                     // String-match IP address
                     $this->trustedProxies[] = $proxy;
@@ -212,11 +212,11 @@ class IpAddress implements MiddlewareInterface
             }
 
             // CIDR Match
-            if ($this->checkProxyHeaders && $this->trustedCidr) {
+            if ($this->checkProxyHeaders && $this->trustedCidrs) {
                 // Only IPv4 is supported for CIDR matching
                 $ipAsLong = ip2long($ipAddress);
                 if ($ipAsLong) {
-                    foreach ($this->trustedCidr as $proxy) {
+                    foreach ($this->trustedCidrs as $proxy) {
                         if ($proxy[0] <= $ipAsLong && $ipAsLong <= $proxy[1]) {
                             $checkProxyHeaders = true;
                             break;
@@ -225,7 +225,7 @@ class IpAddress implements MiddlewareInterface
                 }
             }
 
-            if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidr) {
+            if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidrs) {
                 $checkProxyHeaders = true;
             }
 
