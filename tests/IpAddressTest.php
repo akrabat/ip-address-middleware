@@ -162,7 +162,7 @@ class IpAddressTest extends TestCase
         $this->assertSame('192.168.1.3', $ipAddress);
     }
 
-    public function testProxyIpIsIgnored()
+    public function testProxyIpIsIgnoredWhenNoArgumentsProvided()
     {
         $middleware = new IPAddress();
         $env = [
