@@ -201,7 +201,7 @@ class IpAddress implements MiddlewareInterface
                     foreach ($proxy as $i => $part) {
                         if ($part !== '*' && $part !== $ipAddrParts[$i]) {
                             $match = false;
-                            break;// IP does not match, move to next proxy
+                            break; // IP does not match, move to next proxy
                         }
                     }
                     if ($match) {
