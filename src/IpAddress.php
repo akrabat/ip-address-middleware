@@ -1,6 +1,7 @@
 <?php
 namespace RKA\Middleware;
 
+use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -106,11 +107,7 @@ class IpAddress implements MiddlewareInterface
         }
     }
 
-    /**
-     * @param string $ipAddress
-     * @return array
-     */
-    private function parseWildcard(string $ipAddress)
+    private function parseWildcard(string $ipAddress): array
     {
         // IPv4 has 4 parts separated by '.'
         // IPv6 has 8 parts separated by ':'
@@ -125,11 +122,7 @@ class IpAddress implements MiddlewareInterface
         return explode($delim, $ipAddress, $parts);
     }
 
-    /**
-     * @param string $ipAddress
-     * @return array
-     */
-    private function parseCidr(string $ipAddress)
+    private function parseCidr(string $ipAddress): array
     {
         list($subnet, $bits) = explode('/', $ipAddress, 2);
         $subnet = ip2long($subnet);
@@ -173,7 +166,7 @@ class IpAddress implements MiddlewareInterface
         $ipAddress = $this->determineClientIpAddress($request);
         $request = $request->withAttribute($this->attributeName, $ipAddress);
 
-        return $response = $next($request, $response);
+        return $next($request, $response);
     }
 
     /**
@@ -194,80 +187,86 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        $checkProxyHeaders = false;
-        if ($this->checkProxyHeaders) {
-            // Exact Match
-            if ($this->trustedProxies && in_array($ipAddress, $this->trustedProxies)) {
-                $checkProxyHeaders = true;
-            }
-
-            // Wildcard Match
-            if ($this->checkProxyHeaders && $this->trustedWildcards) {
-                // IPv4 has 4 parts separated by '.'
-                // IPv6 has 8 parts separated by ':'
-                if (strpos($ipAddress, '.') > 0) {
-                    $delim = '.';
-                    $parts = 4;
-                } else {
-                    $delim = ':';
-                    $parts = 8;
-                }
-
-                $ipAddrParts = explode($delim, $ipAddress, $parts);
-                foreach ($this->trustedWildcards as $proxy) {
-                    if (count($proxy) !== $parts) {
-                        continue; // IP version does not match
-                    }
-                    $match = true;
-                    foreach ($proxy as $i => $part) {
-                        if ($part !== '*' && $part !== $ipAddrParts[$i]) {
-                            $match = false;
-                            break; // IP does not match, move to next proxy
-                        }
-                    }
-                    if ($match) {
-                        $checkProxyHeaders = true;
+        if ($this->shouldCheckProxyHeaders($ipAddress)) {
+            foreach ($this->headersToInspect as $header) {
+                if ($request->hasHeader($header)) {
+                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
+                    if ($this->isValidIpAddress($ip)) {
+                        $ipAddress = $ip;
                         break;
                     }
                 }
             }
+        }
 
-            // CIDR Match
-            if ($this->checkProxyHeaders && $this->trustedCidrs) {
-                // Only IPv4 is supported for CIDR matching
-                $ipAsLong = ip2long($ipAddress);
-                if ($ipAsLong) {
-                    foreach ($this->trustedCidrs as $proxy) {
-                        if ($proxy[0] <= $ipAsLong && $ipAsLong <= $proxy[1]) {
-                            $checkProxyHeaders = true;
-                            break;
-                        }
+        return empty($ipAddress) ? null : $ipAddress;
+    }
+
+    /**
+     * Determine whether we should check proxy headers for specified ip address
+     */
+    protected function shouldCheckProxyHeaders(string $ipAddress): bool
+    {
+        //do not check if configured to not check
+        if (!$this->checkProxyHeaders) {
+            return false;
+        }
+
+        //if configured to check but no constraints
+        if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidrs) {
+            return true;
+        }
+
+        // Exact Match for trusted proxies
+        if ($this->trustedProxies && in_array($ipAddress, $this->trustedProxies)) {
+            return true;
+        }
+
+        // Wildcard Match
+        if ($this->trustedWildcards) {
+            // IPv4 has 4 parts separated by '.'
+            // IPv6 has 8 parts separated by ':'
+            if (strpos($ipAddress, '.') > 0) {
+                $delim = '.';
+                $parts = 4;
+            } else {
+                $delim = ':';
+                $parts = 8;
+            }
+
+            $ipAddrParts = explode($delim, $ipAddress, $parts);
+            foreach ($this->trustedWildcards as $proxy) {
+                if (count($proxy) !== $parts) {
+                    continue; // IP version does not match
+                }
+                $match = true;
+                foreach ($proxy as $i => $part) {
+                    if ($part !== '*' && $part !== $ipAddrParts[$i]) {
+                        $match = false;
+                        break; // IP does not match, move to next proxy
                     }
                 }
+                if ($match) {
+                    return true;
+                }
             }
+        }
 
-            if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidrs) {
-                $checkProxyHeaders = true;
-            }
-
-            if ($checkProxyHeaders) {
-                foreach ($this->headersToInspect as $header) {
-                    if ($request->hasHeader($header)) {
-                        $ip = $this->getFirstIpAddressFromHeader($request, $header);
-                        if ($this->isValidIpAddress($ip)) {
-                            $ipAddress = $ip;
-                            break;
-                        }
+        // CIDR Match
+        if ($this->trustedCidrs) {
+            // Only IPv4 is supported for CIDR matching
+            $ipAsLong = ip2long($ipAddress);
+            if ($ipAsLong) {
+                foreach ($this->trustedCidrs as $proxy) {
+                    if ($proxy[0] <= $ipAsLong && $ipAsLong <= $proxy[1]) {
+                        return true;
                     }
                 }
             }
         }
 
-        if (empty($ipAddress)) {
-            $ipAddress = null;
-        }
-
-        return $ipAddress;
+        //default - not check
+        return false;
     }
 
     /**
@@ -296,14 +295,9 @@ class IpAddress implements MiddlewareInterface
      * @param  string  $ip
      * @return boolean
      */
-    protected function isValidIpAddress($ip)
+    protected function isValidIpAddress(string $ip): bool
     {
-        $flags = FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6;
-        if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) {
-            return false;
-        }
-
-        return true;
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) !== false;
     }
 
     /**
@@ -313,7 +307,7 @@ class IpAddress implements MiddlewareInterface
      * @param  string $header Header name
      * @return string
      */
-    private function getFirstIpAddressFromHeader($request, $header)
+    private function getFirstIpAddressFromHeader(MessageInterface $request, string $header): string
     {
         $items = explode(',', $request->getHeaderLine($header));
         $headerValue = trim(reset($items));
