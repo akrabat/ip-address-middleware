@@ -6,7 +6,7 @@ on:
 
 jobs:
   tests:
-    name: PHPUnit tests
+    name: Tests PHP ${{ matrix.php }}
 
     runs-on: ${{ matrix.operating-system }}
 
