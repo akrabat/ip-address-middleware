@@ -23,30 +23,30 @@ jobs:
           - "ubuntu-latest"
 
     steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v2"
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: "Install PHP"
-        uses: "shivammathur/setup-php@v2"
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
         with:
-          coverage: "pcov"
-          php-version: "${{ matrix.php-version }}"
+          coverage: pcov
+          php-version: ${{ matrix.php-version }}
           ini-values: memory_limit=-1
           tools: composer:v2, cs2pr
 
-      - name: "Cache dependencies"
-        uses: "actions/cache@v2"
+      - name: Cache dependencies
+        uses: actions/cache@v2
         with:
           path: |
             ~/.composer/cache
             vendor
-          key: "php-${{ matrix.php-version }}"
-          restore-keys: "php-${{ matrix.php-version }}"
+          key: php-${{ matrix.php-version }}
+          restore-keys: php-${{ matrix.php-version }}
 
-      - name: "Install highest dependencies"
-        run: "composer update --no-interaction --no-progress --no-suggest"
+      - name: Install highest dependencies
+        run: composer update --no-interaction --no-progress --no-suggest
 
-      - name: "Tests"
-        run: "vendor/bin/phpunit"
+      - name: Tests
+        run: vendor/bin/phpunit
