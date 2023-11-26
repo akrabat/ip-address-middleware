@@ -1,11 +1,11 @@
-name: PHPUnit tests
+name: Tests
 
 on:
   pull_request:
   push:
 
 jobs:
-  phpunit:
+  tests:
     name: PHPUnit tests
 
     runs-on: ${{ matrix.operating-system }}
