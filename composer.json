@@ -32,5 +32,10 @@
         "psr-4": {
             "RKA\\Middleware\\": "src"
         }
+    },
+    "extra": {
+        "laminas": {
+            "config-provider": "RKA\\Middleware\\Mezzio\\ConfigProvider"
+        }
     }
 }
