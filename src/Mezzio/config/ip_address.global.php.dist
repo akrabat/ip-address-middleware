@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+// phpcs:disable PSR12.Files.FileHeader.IncorrectOrder
+
+/**
+ * IpAddress Middleware Configuration
+ */
+
+return [
+    'rka' => [
+        'ip_address' => [
+            'check_proxy_headers' => (bool) ($_ENV['IP_ADDRESS_CHECK_PROXY_HEADERS'] ?? false),
+            'trusted_proxies'     => $_ENV['IP_ADDRESS_TRUSTED_PROXIES'] ?? null,
+            'attribute_name'      => $_ENV['IP_ADDRESS_ATTRIBUTE_NAME'] ?? null,
+            'headers_to_inspect'  => explode(',', $_ENV['IP_ADDRESS_HEADERS_TO_INSPECT'] ?? ''),
+        ],
+    ],
+];

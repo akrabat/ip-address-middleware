@@ -62,6 +62,8 @@ This library cannot by design ensure you get correct and trustworthy results if 
 
 `composer require akrabat/ip-address-middleware`
 
+In Mezzio, copy `Mezzio/config/ip_address.global.php.dist` into your Mezzio Application `config/autoload` directory as `ip_address.global.php`
+
 ## Usage
 
 In Slim 3:
@@ -78,12 +80,13 @@ $app->get('/', function ($request, $response, $args) {
 });
 ```
 
-In Laminas, add to your `pipeline.php` config at the correct stage, usually just before the `DispatchMiddleware`:
+In Laminas or Mezzio, add to your `pipeline.php` config at the correct stage, usually just before the `DispatchMiddleware`:
 ```php
 # config/pipeline.php
 # using default config
 $app->add(RKA\Middleware\IpAddress::class);
 ```
+If required, update your `.env` file with the environmental variables found in `/config/autoload/ip_address.global.php`.
 
 ## Testing
 

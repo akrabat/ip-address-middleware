@@ -20,7 +20,8 @@
     "require": {
         "php": "^7.2 || ^8.0",
         "psr/http-message": "^1.0 || ^2.0",
-        "psr/http-server-middleware": "^1.0"
+        "psr/http-server-middleware": "^1.0",
+        "psr/container": "^1.0 || ^2.0"
     },
     "require-dev": {
         "laminas/laminas-diactoros": "^2.4 || ^3.0",
@@ -30,6 +31,11 @@
     "autoload": {
         "psr-4": {
             "RKA\\Middleware\\": "src"
+        }
+    },
+    "extra": {
+        "laminas": {
+            "config-provider": "RKA\\Middleware\\Mezzio\\ConfigProvider"
         }
     }
 }
