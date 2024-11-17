@@ -73,7 +73,7 @@ class IpAddress implements MiddlewareInterface
      */
     public function __construct(
         $checkProxyHeaders = false,
-        array $trustedProxies = null,
+        ?array $trustedProxies = null,
         $attributeName = null,
         array $headersToInspect = []
     ) {
