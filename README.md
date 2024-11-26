@@ -2,8 +2,13 @@
 
 PSR-15 Middleware that determines the client IP address and stores it as an `ServerRequest` attribute called `ip_address`. It optionally checks various common proxy headers and then falls back to `$_SERVER['REMOTE_ADDR']`.
 
-[![Build status][Master image]][Master]
+## Installation
 
+Install via Composer:
+
+```bash
+composer require akrabat/ip-address-middleware
+``` 
 
 ## Configuration
 
