@@ -190,7 +190,7 @@ class IpAddress implements MiddlewareInterface
         if ($this->shouldCheckProxyHeaders($ipAddress)) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
-                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
+                    $ip = $this->getRightOfTrustedProxyIpAddressFromHeader($request, $header);
                     if ($this->isValidIpAddress($ip)) {
                         $ipAddress = $ip;
                         break;
@@ -302,23 +302,32 @@ class IpAddress implements MiddlewareInterface
 
     /**
      * Find out the client's IP address from the headers available to us
+     * The rightmost IP address is considered the client's IP address, let leftmost can be spoofed IPs or proxies
      *
      * @param  ServerRequestInterface $request PSR-7 Request
      * @param  string $header Header name
      * @return string
      */
-    private function getFirstIpAddressFromHeader(MessageInterface $request, string $header): string
+    private function getRightOfTrustedProxyIpAddressFromHeader(MessageInterface $request, string $header): string
     {
         $items = explode(',', $request->getHeaderLine($header));
-        $headerValue = trim(reset($items));
+        $headerValue = '';
 
-        if (ucfirst($header) == 'Forwarded') {
-            foreach (explode(';', $headerValue) as $headerPart) {
-                if (strtolower(substr($headerPart, 0, 4)) == 'for=') {
-                    $for = explode(']', $headerPart);
-                    $headerValue = trim(substr(reset($for), 4), " \t\n\r\0\x0B" . "\"[]");
-                    break;
+        for ($i = count($items) - 1; $i >= 0; $i--) {
+            $headerValue = trim($items[$i]);
+            if (ucfirst($header) == 'Forwarded') {
+                foreach (explode(';', $headerValue) as $headerPart) {
+                    if (strtolower(substr($headerPart, 0, 4)) == 'for=') {
+                        $for = explode(']', $headerPart);
+                        $headerValue = trim(substr(reset($for), 4), " \t\n\r\0\x0B" . "\"[]");
+                        break;
+                    }
                 }
+            }
+
+            $ipAddress = $this->extractIpAddress($headerValue);
+            if ($this->isValidIpAddress($ipAddress)) {
+                return $ipAddress;
             }
         }
 
