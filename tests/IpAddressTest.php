@@ -147,7 +147,7 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
     public function testXForwardedForIpWithPort()
@@ -159,7 +159,7 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
     public function testProxyIpIsIgnoredWhenNoArgumentsProvided()
@@ -219,7 +219,7 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
     public function testXForwardedForIpWithUntrustedProxy()
@@ -243,12 +243,24 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.0.2.43', $ipAddress);
+        $this->assertSame('198.51.100.17', $ipAddress);
     }
 
     public function testForwardedWithAllOptions()
     {
         $middleware = new IPAddress(true, []);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'for=192.0.2.60; proto=http;by=203.0.113.43; host=_hiddenProxy, for=192.0.2.61',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('192.0.2.61', $ipAddress);
+    }
+
+    public function testForwardedWithAllOptionsAndTrustedProxiesCount()
+    {
+        $middleware = new IPAddress(true, [], null, [], 1);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'for=192.0.2.60; proto=http;by=203.0.113.43; host=_hiddenProxy, for=192.0.2.61',
@@ -261,6 +273,18 @@ class IpAddressTest extends TestCase
     public function testForwardedWithWithIpV6()
     {
         $middleware = new IPAddress(true, []);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", for=_internalProxy',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('192.168.1.1', $ipAddress);
+    }
+
+    public function testForwardedWithWithIpV6AndTrustedProxiesCount()
+    {
+        $middleware = new IPAddress(true, [], null, [], 1);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
             'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", for=_internalProxy',
@@ -365,5 +389,42 @@ class IpAddressTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new IpAddress(true);
+    }
+
+    public function testXForwardedForIpV6WildCard()
+    {
+        $middleware = new IPAddress(true, ['2600:1f16:1d7b:*:*:*:*:*']);
+        $env = [
+            'REMOTE_ADDR' => '2600:1f16:1d7b:2b00:ed8f:ce7a:8afe:ef7',
+            'HTTP_X_FORWARDED_FOR' => '2600:1f16:1d7b:2b01:ed8f:ce7a:8afe:ef7,50.25.33.55'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('50.25.33.55', $ipAddress);
+    }
+
+    public function testXForwardedForIpV6WildCardWithTrustedProxiesCount()
+    {
+        $middleware = new IPAddress(true, ['2600:1f16:1d7b:*:*:*:*:*'], null, [], 2);
+        $env = [
+            'REMOTE_ADDR' => '2600:1f16:1d7b:2b00:ed8f:ce7a:8afe:ef7',
+            'HTTP_X_FORWARDED_FOR' => '2600:1f16:1d7b:2b01:ed8f:ce7a:8afe:ef7,50.25.33.55,_unknown'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('2600:1f16:1d7b:2b01:ed8f:ce7a:8afe:ef7', $ipAddress);
+    }
+
+    public function testIncorrectTrustedProxiesCount()
+    {
+        // If the "trusted proxies count" parameter is greater than the number of proxies in the X-Forwarded-For header, we fallback to the leftmost IP as the user considers there are trusted proxies IPs on the list
+        $middleware = new IPAddress(true, ['2600:1f16:1d7b:*:*:*:*:*'], null, [], 4);
+        $env = [
+            'REMOTE_ADDR' => '2600:1f16:1d7b:2b00:ed8f:ce7a:8afe:ef7',
+            'HTTP_X_FORWARDED_FOR' => '2600:1f16:1d7b:2b01:ed8f:ce7a:8afe:ef7,50.25.33.55,_unknown'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('2600:1f16:1d7b:2b01:ed8f:ce7a:8afe:ef7', $ipAddress);
     }
 }
