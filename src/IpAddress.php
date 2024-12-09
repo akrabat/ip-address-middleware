@@ -203,7 +203,7 @@ class IpAddress implements MiddlewareInterface
         if ($this->shouldCheckProxyHeaders($ipAddress)) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
-                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
+                    $ip = $this->getIpAddressFromHeader($request, $header);
                     if ($this->isValidIpAddress($ip)) {
                         $ipAddress = $ip;
                         break;
@@ -315,15 +315,17 @@ class IpAddress implements MiddlewareInterface
 
     /**
      * Find out the client's IP address from the headers available to us
+     * The rightmost IP address - after ignoring the right elements based on the trustedProxiesCount - is considered
+     * the client's IP address, let leftmost can be spoofed IPs
      *
      * @param  ServerRequestInterface $request PSR-7 Request
      * @param  string $header Header name
      * @return string
      */
-    private function getFirstIpAddressFromHeader(MessageInterface $request, string $header): string
+    private function getIpAddressFromHeader(MessageInterface $request, string $header): string
     {
         $items = explode(',', $request->getHeaderLine($header));
-        $headerValue = trim(reset($items));
+        $headerValue = trim($items[max((count($items) - 1) - $this->trustedProxiesCount, 0)]);
 
         if (ucfirst($header) == 'Forwarded') {
             foreach (explode(';', $headerValue) as $headerPart) {
