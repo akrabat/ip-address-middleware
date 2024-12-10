@@ -12,7 +12,7 @@ composer require akrabat/ip-address-middleware
 
 ## Configuration
 
-The constructor takes 4 parameters which can be used to configure this middleware.
+The constructor takes 5 parameters which can be used to configure this middleware.
 
 **Check proxy headers**
 
@@ -56,10 +56,21 @@ If you use _CloudFlare_, then according to the [documentation][cloudflare] you s
 [nginx]: http://nginx.org/en/docs/http/ngx_http_realip_module.html
 [cloudflare]: https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-Cloudflare-handle-HTTP-Request-headers-
 
+**Trusted proxies count**
+
+By default, this parameter is 0. This can be changed by the fifth constructor parameter, and if the *Check proxy headers* parameters is set to true, this number corresponds to IPs to be ignored in the Forwarded list starting from the right. 
 
 ## Security considerations
 
 A malicious client may send any header to your proxy, including any proxy headers, containing any IP address. If your proxy simply adds another IP address to the header, an attacker can send a fake IP. Make sure to setup your proxy in a way that removes any sent (and possibly faked) headers from the original request and replaces them with correct values (i.e. the currently used `REMOTE_ADDR` on the proxy server).
+
+As leftmost IP in the Forwarded header can be spoofed, if the *Check proxy headers* parameter is used,
+this library takes the rightmost IP from the Forwarded list.
+If from the Forwarded list you trust a number of IPs (known and trusted proxies in your architecture),
+you can use the *Trusted proxies count* parameter to ignore this number of trusted proxies IPs from the list.   
+
+For example, using the correct configuration,
+if the Forwarded header contains `192.121.12.1,198.100.2.1`, *198.100.2.1* will be returned, but if we set the constructor fifth parameter to be 1, *192.121.12.1* will be returned.   
 
 This library cannot by design ensure you get correct and trustworthy results if your network environment isn't setup properly.
 

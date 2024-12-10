@@ -50,6 +50,13 @@ class IpAddress implements MiddlewareInterface
      */
     protected $attributeName = 'ip_address';
 
+    /*
+     * Trusted proxies that should be ignored in the Forwarded header list, starting from the rightmost to the left.
+     *
+     * @var int
+     */
+    protected $trustedProxiesCount = 0;
+
     /**
      * List of proxy headers inspected for the client IP address
      *
@@ -66,16 +73,18 @@ class IpAddress implements MiddlewareInterface
     /**
      * Constructor
      *
-     * @param bool $checkProxyHeaders Whether to use proxy headers to determine client IP
-     * @param array $trustedProxies   List of IP addresses of trusted proxies
-     * @param string $attributeName   Name of attribute added to ServerRequest object
-     * @param array $headersToInspect List of headers to inspect
+     * @param  bool  $checkProxyHeaders  Whether to use proxy headers to determine client IP
+     * @param  array|null  $trustedProxies  List of IP addresses of trusted proxies
+     * @param  string|null  $attributeName  Name of attribute added to ServerRequest object
+     * @param  array  $headersToInspect  List of headers to inspect
+     * @param  int  $trustedProxiesCount
      */
     public function __construct(
-        $checkProxyHeaders = false,
+        bool $checkProxyHeaders = false,
         ?array $trustedProxies = null,
-        $attributeName = null,
-        array $headersToInspect = []
+        ?string $attributeName = null,
+        array $headersToInspect = [],
+        int $trustedProxiesCount = 0
     ) {
         if ($checkProxyHeaders && $trustedProxies === null) {
             throw new \InvalidArgumentException('Use of the forward headers requires an array for trusted proxies.');
@@ -104,6 +113,10 @@ class IpAddress implements MiddlewareInterface
 
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
+        }
+
+        if ($trustedProxiesCount > 0) {
+            $this->trustedProxiesCount = $trustedProxiesCount;
         }
     }
 
@@ -190,7 +203,7 @@ class IpAddress implements MiddlewareInterface
         if ($this->shouldCheckProxyHeaders($ipAddress)) {
             foreach ($this->headersToInspect as $header) {
                 if ($request->hasHeader($header)) {
-                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
+                    $ip = $this->getIpAddressFromHeader($request, $header);
                     if ($this->isValidIpAddress($ip)) {
                         $ipAddress = $ip;
                         break;
@@ -302,15 +315,17 @@ class IpAddress implements MiddlewareInterface
 
     /**
      * Find out the client's IP address from the headers available to us
+     * The rightmost IP address - after ignoring the right elements based on the trustedProxiesCount - is considered
+     * the client's IP address, let leftmost can be spoofed IPs
      *
      * @param  ServerRequestInterface $request PSR-7 Request
      * @param  string $header Header name
      * @return string
      */
-    private function getFirstIpAddressFromHeader(MessageInterface $request, string $header): string
+    private function getIpAddressFromHeader(MessageInterface $request, string $header): string
     {
         $items = explode(',', $request->getHeaderLine($header));
-        $headerValue = trim(reset($items));
+        $headerValue = trim($items[max((count($items) - 1) - $this->trustedProxiesCount, 0)]);
 
         if (ucfirst($header) == 'Forwarded') {
             foreach (explode(';', $headerValue) as $headerPart) {
