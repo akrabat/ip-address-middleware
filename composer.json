@@ -37,5 +37,15 @@
         "laminas": {
             "config-provider": "RKA\\Middleware\\Mezzio\\ConfigProvider"
         }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs": "phpcs",
+        "cs-fix": "phpcbf",
+        "code-coverage": "phpunit --coverage-html=coverage ./build",
+        "check": [
+            "@cs",
+            "@test"
+        ]
     }
 }
