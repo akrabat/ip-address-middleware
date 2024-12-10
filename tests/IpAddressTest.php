@@ -417,7 +417,8 @@ class IpAddressTest extends TestCase
 
     public function testIncorrectTrustedProxiesCount()
     {
-        // If the "trusted proxies count" parameter is greater than the number of proxies in the X-Forwarded-For header, we fallback to the leftmost IP as the user considers there are trusted proxies IPs on the list
+        // If the "trusted proxies count" parameter is greater than the number of proxies in the X-Forwarded-For header,
+        // we fall back to the leftmost IP as the user considers there are trusted proxies IPs on the list
         $middleware = new IPAddress(true, ['2600:1f16:1d7b:*:*:*:*:*'], null, [], 4);
         $env = [
             'REMOTE_ADDR' => '2600:1f16:1d7b:2b00:ed8f:ce7a:8afe:ef7',
