@@ -27,7 +27,7 @@ class IpAddress implements MiddlewareInterface
      *
      * @var array
      */
-    protected $trustedProxies;
+    protected $trustedProxies = [];
 
     /**
      * List of trusted proxy IP wildcard ranges
@@ -83,7 +83,7 @@ class IpAddress implements MiddlewareInterface
 
         $this->checkProxyHeaders = $checkProxyHeaders;
 
-        if ($trustedProxies) {
+        if (is_array($trustedProxies)) {
             foreach ($trustedProxies as $proxy) {
                 if (strpos($proxy, '*') !== false) {
                     // Wildcard IP address
@@ -175,26 +175,40 @@ class IpAddress implements MiddlewareInterface
      * @param  ServerRequestInterface $request PSR-7 Request
      * @return string
      */
-    protected function determineClientIpAddress($request)
+    protected function determineClientIpAddress($request): ?string
     {
-        $ipAddress = '';
+        $ipAddress =  null;
 
         $serverParams = $request->getServerParams();
         if (isset($serverParams['REMOTE_ADDR'])) {
             $remoteAddr = $this->extractIpAddress($serverParams['REMOTE_ADDR']);
-            if ($this->isValidIpAddress($remoteAddr)) {
+            if (filter_var($remoteAddr, FILTER_VALIDATE_IP)) {
                 $ipAddress = $remoteAddr;
             }
         }
+        if (!$this->checkProxyHeaders) {
+            // do not check if configured to not check
+            return $ipAddress;
+        }
 
-        if ($this->shouldCheckProxyHeaders($ipAddress)) {
-            foreach ($this->headersToInspect as $header) {
-                if ($request->hasHeader($header)) {
-                    $ip = $this->getFirstIpAddressFromHeader($request, $header);
-                    if ($this->isValidIpAddress($ip)) {
-                        $ipAddress = $ip;
-                        break;
-                    }
+        // If trustedProxies is empty, then the remote address is the trusted proxy
+        $trustedProxies = $this->trustedProxies;
+        if (empty($trustedProxies) && empty($this->trustedWildcards) && empty($this->trustedCidrs)) {
+            $trustedProxies[] = $ipAddress;
+        }
+
+        // find the first non-empty header from the headersToInspect list and use just that one
+        foreach ($this->headersToInspect as $header) {
+            if ($request->hasHeader($header)) {
+                $headerValue = $request->getHeaderLine($header);
+                if (!empty($headerValue)) {
+                    $ipAddress = $this->getIpAddressFromHeader(
+                        $header,
+                        $headerValue,
+                        $ipAddress,
+                        $trustedProxies,
+                    );
+                    break;
                 }
             }
         }
@@ -202,27 +216,61 @@ class IpAddress implements MiddlewareInterface
         return empty($ipAddress) ? null : $ipAddress;
     }
 
-    /**
-     * Determine whether we should check proxy headers for specified ip address
-     */
-    protected function shouldCheckProxyHeaders(string $ipAddress): bool
+    public function getIpAddressFromHeader(
+        string $headerName,
+        string $headerValue,
+        string $ipAddress,
+        array $trustedProxies
+    ) {
+        if (strtolower($headerName) == 'forwarded') {
+            // The Forwarded header is different, so we need to extract the for= values. Note that we perform a
+            // simple extraction here, and do not support the full RFC 7239 specification.
+            preg_match_all('/for=([^,;]+)/i', $headerValue, $matches);
+            $ipList = $matches[1];
+
+            // If any of the items in the list are not an IP address, then we ignore the entire list for now
+            foreach ($ipList as $ip) {
+                $ip = $this->extractIpAddress($ip);
+                if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ipAddress;
+                }
+            }
+        } else {
+            $ipList = explode(',', $headerValue);
+        }
+        $ipList[] = $ipAddress;
+
+        // Remove port from each item in the list
+        $ipList = array_map(function ($ip) {
+            return $this->extractIpAddress(trim($ip));
+        }, $ipList);
+
+        // Ensure all IPs are valid and return $ipAddress if not
+        foreach ($ipList as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ipAddress;
+            }
+        }
+
+        // walk list from right to left removing known proxy IP addresses.
+        $ipList = array_reverse($ipList);
+        foreach ($ipList as $ip) {
+            $ip = trim($ip);
+            if (!empty($ip) && !$this->isTrustedProxy($ip, $trustedProxies)) {
+                return $ip;
+            }
+        }
+
+        return $ipAddress;
+    }
+
+    protected function isTrustedProxy(string $ipAddress, array $trustedProxies): bool
     {
-        //do not check if configured to not check
-        if (!$this->checkProxyHeaders) {
-            return false;
-        }
-
-        //if configured to check but no constraints
-        if (!$this->trustedProxies && !$this->trustedWildcards && !$this->trustedCidrs) {
+        if (in_array($ipAddress, $trustedProxies)) {
             return true;
         }
 
-        // Exact Match for trusted proxies
-        if ($this->trustedProxies && in_array($ipAddress, $this->trustedProxies)) {
-            return true;
-        }
-
-        // Wildcard Match
+        // Do we match a wildcard?
         if ($this->trustedWildcards) {
             // IPv4 has 4 parts separated by '.'
             // IPv6 has 8 parts separated by ':'
@@ -252,7 +300,7 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        // CIDR Match
+        // Do we match a CIDR address?
         if ($this->trustedCidrs) {
             // Only IPv4 is supported for CIDR matching
             $ipAsLong = ip2long($ipAddress);
@@ -265,7 +313,6 @@ class IpAddress implements MiddlewareInterface
             }
         }
 
-        //default - not check
         return false;
     }
 
@@ -280,48 +327,25 @@ class IpAddress implements MiddlewareInterface
     protected function extractIpAddress($ipAddress)
     {
         $parts = explode(':', $ipAddress);
+        if (count($parts) == 1) {
+            return $ipAddress;
+        }
         if (count($parts) == 2) {
             if (filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
                 return $parts[0];
             }
         }
 
-        return $ipAddress;
-    }
-
-    /**
-     * Check that a given string is a valid IP address
-     *
-     * @param  string  $ip
-     * @return boolean
-     */
-    protected function isValidIpAddress(string $ip): bool
-    {
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) !== false;
-    }
-
-    /**
-     * Find out the client's IP address from the headers available to us
-     *
-     * @param  ServerRequestInterface $request PSR-7 Request
-     * @param  string $header Header name
-     * @return string
-     */
-    private function getFirstIpAddressFromHeader(MessageInterface $request, string $header): string
-    {
-        $items = explode(',', $request->getHeaderLine($header));
-        $headerValue = trim(reset($items));
-
-        if (ucfirst($header) == 'Forwarded') {
-            foreach (explode(';', $headerValue) as $headerPart) {
-                if (strtolower(substr($headerPart, 0, 4)) == 'for=') {
-                    $for = explode(']', $headerPart);
-                    $headerValue = trim(substr(reset($for), 4), " \t\n\r\0\x0B" . "\"[]");
-                    break;
-                }
-            }
+        // If the $ipAddress starts with a [ and ends with ] or ]:port, then it is an IPv6 address and
+        // we can extract the IP address
+        $ipAddress = trim($ipAddress, '"\'');
+        if (substr($ipAddress, 0, 1) === '['
+            && (substr($ipAddress, -1) === ']' || preg_match('/\]:\d+$/', $ipAddress))) {
+            // Extract IPv6 address between brackets
+            preg_match('/\[(.*?)\]/', $ipAddress, $matches);
+            $ipAddress = $matches[1];
         }
 
-        return $this->extractIpAddress($headerValue);
+        return $ipAddress;
     }
 }
