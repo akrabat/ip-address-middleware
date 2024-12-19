@@ -22,24 +22,26 @@ class IpAddressTest extends TestCase
         return $attributeValue;
     }
 
-    public function testIpSetByRemoteAddr()
+    public function testIpAddressIsSetByRemoteAddrIfCheckProxyHeadersIsFalse()
     {
         $middleware = new IPAddress(false, [], 'IP');
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
         ];
         $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
 
-    public function testIpWithPortSetByRemoteAddr()
+    public function testPortIsStrippedFromRemoteAddr()
     {
-        $middleware = new IPAddress(false, [], 'IP');
+        $middleware = new IPAddress(false, []);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1:80',
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
         ];
-        $ipAddress = $this->simpleRequest($middleware, $env, 'IP');
+        $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
@@ -138,43 +140,43 @@ class IpAddressTest extends TestCase
         $this->assertSame(null, $ipAddress);
     }
 
-    public function testXForwardedForIp()
+    public function testIpAddressIsLastInXForwardedForListIfTrustedProxiesIsEmpty()
     {
         $middleware = new IPAddress(true, []);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
-            'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.4, 192.168.1.3, 192.168.1.2'
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.2', $ipAddress);
     }
 
-    public function testXForwardedForIpWithPort()
+    public function testPortsAreStrippedOnXForwardedFor()
     {
         $middleware = new IPAddress(true, ['192.168.1.1']);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1:81',
-            'HTTP_X_FORWARDED_FOR' => '192.168.1.3:81, 192.168.1.2:81, 192.168.1.1:81'
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.4:81, 192.168.1.3:81, 192.168.1.2:81'
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.2', $ipAddress);
     }
 
-    public function testProxyIpIsIgnoredWhenNoArgumentsProvided()
+    public function testProxyHeaderIsIgnoredWhenNoArgumentsProvided()
     {
         $middleware = new IPAddress();
         $env = [
-            'REMOTE_ADDR' => '192.168.0.1',
-            'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.1.1'
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.4, 192.168.1.3, 192.168.1.2'
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.0.1', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
-    public function testHttpClientIp()
+    public function testHttpClientIpHeaderIsUsedWhenAvailable()
     {
         $middleware = new IPAddress(true, []);
         $env = [
@@ -198,19 +200,19 @@ class IpAddressTest extends TestCase
         $this->assertSame('001:DB8::21f:5bff:febf:ce22:8a2e', $ipAddress);
     }
 
-    public function testXForwardedForWithInvalidIp()
+    public function testXForwardedForIsIgnoredWhenItContainsAnInvalidIp()
     {
         $middleware = new IPAddress(true, []);
         $env = [
             'REMOTE_ADDR' => '192.168.1.1',
-            'HTTP_X_FORWARDED_FOR' => 'foo-bar'
+            'HTTP_X_FORWARDED_FOR' => 'foo-bar 192.168.1.2'
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
         $this->assertSame('192.168.1.1', $ipAddress);
     }
 
-    public function testXForwardedForIpWithTrustedProxy()
+    public function testXForwardedForIpWithOneTrustedProxyInList()
     {
         $middleware = new IPAddress(true, ['192.168.0.1', '192.168.0.2']);
         $env = [
@@ -219,9 +221,24 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.168.1.3', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
+    public function testXForwardedForIpWithTwoTrustedProxiesInList()
+    {
+        $middleware = new IPAddress(true, ['192.168.0.1', '192.168.0.2']);
+        $env = [
+            'REMOTE_ADDR' => '192.168.0.2',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.1.2, 192.168.0.1'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('192.168.1.2', $ipAddress);
+    }
+
+    /**
+     * If the proxy is untrusted, then we do not use the proxy list and return the REMOTE_ADDR
+     */
     public function testXForwardedForIpWithUntrustedProxy()
     {
         $middleware = new IPAddress(true, ['192.168.0.1']);
@@ -243,9 +260,13 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.0.2.43', $ipAddress);
+        $this->assertSame('198.51.100.17', $ipAddress);
     }
 
+    /**
+     * With no trusted proxies listed, REMOTE_ADDR is assumed to be a trusted proxy and
+     * so the last for= entry is returned.
+     */
     public function testForwardedWithAllOptions()
     {
         $middleware = new IPAddress(true, []);
@@ -255,10 +276,29 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('192.0.2.60', $ipAddress);
+        $this->assertSame('192.0.2.61', $ipAddress);
     }
 
+    /**
+     *  Test that we support IPV6 with a port number as the for= value
+     */
     public function testForwardedWithWithIpV6()
+    {
+        $middleware = new IPAddress(true, []);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_FORWARDED' => 'For="[2001:db8:cafe::17]:4711", host=_internalProxy',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('2001:db8:cafe::17', $ipAddress);
+    }
+
+    /**
+     * If one of the for= entries is an internal proxy, then we do not support the entire
+     * header at this time. This could be fixed if we support a count of proxy hops.
+     */
+    public function testForwardedWithWithAnInternalProxy()
     {
         $middleware = new IPAddress(true, []);
         $env = [
@@ -267,7 +307,7 @@ class IpAddressTest extends TestCase
         ];
         $ipAddress = $this->simpleRequest($middleware, $env);
 
-        $this->assertSame('2001:db8:cafe::17', $ipAddress);
+        $this->assertSame('192.168.1.1', $ipAddress);
     }
 
     public function testCustomHeader()
@@ -365,5 +405,21 @@ class IpAddressTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new IpAddress(true);
+    }
+
+    /**
+     * If the trusted proxy is not rightmost, then we ignore it and pick the rightmost
+     * IP address after the trusted proxies in the right position
+     */
+    public function testThatATrustedProxiesInWrongPlaceIsIgnored()
+    {
+        $middleware = new IPAddress(true, ['192.168.0.1', '192.168.0.2']);
+        $env = [
+            'REMOTE_ADDR' => '192.168.0.2',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.3, 192.168.0.1, 192.168.1.2'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame('192.168.1.2', $ipAddress);
     }
 }

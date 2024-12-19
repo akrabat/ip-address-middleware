@@ -95,9 +95,17 @@ If required, update your `.env` file with the environmental variables found in `
 
 ## Testing
 
-* Code style: ``$ vendor/bin/phpcs``
-* Unit tests: ``$ vendor/bin/phpunit``
-* Code coverage: ``$ vendor/bin/phpunit --coverage-html ./build``
+* Code style: `$ vendor/bin/phpcs`
+* Fix style: `$ vendor/bin/phpcbf`
+* Unit tests: `$ vendor/bin/phpunit`
+* Code coverage: `$ vendor/bin/phpunit --coverage-html ./build`
+
+You can also use Composer scripts:
+
+* Check both: `$ composer check`
+* Code style: `$ composer cs`
+* Fix style: `$ composer cs-fix`
+* Unit tests: `$ composer test`
 
 
 [Master]: https://travis-ci.org/akrabat/ip-address-middleware
