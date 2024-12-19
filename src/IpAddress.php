@@ -206,7 +206,7 @@ class IpAddress implements MiddlewareInterface
                         $header,
                         $headerValue,
                         $ipAddress,
-                        $trustedProxies,
+                        $trustedProxies
                     );
                     break;
                 }
