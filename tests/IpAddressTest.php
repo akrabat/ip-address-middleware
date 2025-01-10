@@ -22,6 +22,17 @@ class IpAddressTest extends TestCase
         return $attributeValue;
     }
 
+    public function testMissingRemoteAddrSetsTheAttributeToNull()
+    {
+        $middleware = new IPAddress(true, []);
+        $env = [
+            'HTTP_X_FORWARDED_FOR' => '123.4.5.6',
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        $this->assertSame(null, $ipAddress);
+    }
+
     public function testIpAddressIsSetByRemoteAddrIfCheckProxyHeadersIsFalse()
     {
         $middleware = new IPAddress(false, [], 'IP');
