@@ -186,6 +186,11 @@ class IpAddress implements MiddlewareInterface
                 $ipAddress = $remoteAddr;
             }
         }
+        if ($ipAddress === null) {
+            // do not continue if there isn't a valid remote address
+            return $ipAddress;
+        }
+
         if (!$this->checkProxyHeaders) {
             // do not check if configured to not check
             return $ipAddress;
