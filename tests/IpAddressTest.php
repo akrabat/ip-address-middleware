@@ -433,4 +433,56 @@ class IpAddressTest extends TestCase
 
         $this->assertSame('192.168.1.2', $ipAddress);
     }
+
+    /**
+     * If the hop count is set, then it is used to determine the IP address to return
+     */
+    public function testHopCountIsUsedWhenNoTrustedProxiesAreDefined()
+    {
+        $middleware = new IPAddress(true, [], null, [], 3);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.5, 192.168.1.4, 192.168.1.3, 192.168.1.2'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        // With three trusted hops, the 4th IP address should be found
+        $this->assertSame('192.168.1.4', $ipAddress);
+    }
+
+    /**
+     * With the hop count set, the IP address returned is the first IP address after the hop count even
+     * if there are non-trusted IP addresses before it in the list.
+     */
+    public function testHopCountOverridesTrustedProxies()
+    {
+        $middleware = new IPAddress(true, ['192.168.1.2', '192.168.1.1'], null, [], 3);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.5, 192.168.1.4, 192.168.1.3, 192.168.1.2'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        // With three trusted hops, the 4th IP address should be found even though the third IP address
+        // is not a trusted proxy
+        $this->assertSame('192.168.1.4', $ipAddress);
+    }
+
+    /**
+     * With the hop count is set, if the IP address at the hop count is a trusted proxy, then
+     * select the first IP address after it that is not a trusted proxy
+     */
+    public function testHopCountDoesNotReturnATrustedProxy()
+    {
+        $middleware = new IPAddress(true, ['192.168.1.2', '192.168.1.1'], null, [], 1);
+        $env = [
+            'REMOTE_ADDR' => '192.168.1.1',
+            'HTTP_X_FORWARDED_FOR' => '192.168.1.5, 192.168.1.4, 192.168.1.3, 192.168.1.2'
+        ];
+        $ipAddress = $this->simpleRequest($middleware, $env);
+
+        // With 1 trusted hop, the second IP address would be found, except that it is a trusted proxy
+        // itself, so the third IP address should be found
+        $this->assertSame('192.168.1.3', $ipAddress);
+    }
 }

@@ -12,15 +12,17 @@ composer require akrabat/ip-address-middleware
 
 ## Configuration
 
-The constructor takes 4 parameters which can be used to configure this middleware.
+The constructor takes 5 parameters which can be used to configure this middleware.
 
 **Check proxy headers**
 
-Note that the proxy headers are only checked if the first parameter to the constructor is set to `true`. If it is set to `false`, then only `$_SERVER['REMOTE_ADDR']` is used.
+The proxy headers are only checked if the first parameter to the constructor is set to `true`. If it is set to `false`, then only `$_SERVER['REMOTE_ADDR']` is used.
 
 **Trusted Proxies**
 
-If you configure to check the proxy headers (first parameter is `true`), you have to provide an array of trusted proxies as the second parameter. When the array is empty, the proxy headers will always be evaluated which is not recommended. If the array is not empty, it must contain strings with IP addresses (wildcard `*` is allowed in any given part) or networks in CIDR-notation. One of them must match the `$_SERVER['REMOTE_ADDR']` variable in order to allow evaluating the proxy headers - otherwise the `REMOTE_ADDR` itself is returned.
+If you enable checking of the proxy headers (first parameter is `true`), you have to provide an array as the second parameter. This is the list of IP addresses (supporting wildcards) of your proxy servers. If the array is empty, the proxy headers will always be used and the selection is based on the hop count (parameter 5). 
+
+If the array is not empty, it must contain strings with IP addresses (wildcard `*` is allowed in any given part) or networks in CIDR-notation. One of them must match the `$_SERVER['REMOTE_ADDR']` variable in order to allow evaluating the proxy headers - otherwise the `REMOTE_ADDR` itself is returned. This list is not ordered and there is no requirement that any given proxy header includes all the listed proxies.
 
 **Attribute name**
 
@@ -56,6 +58,11 @@ If you use _CloudFlare_, then according to the [documentation][cloudflare] you s
 [nginx]: http://nginx.org/en/docs/http/ngx_http_realip_module.html
 [cloudflare]: https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-Cloudflare-handle-HTTP-Request-headers-
 
+**hop count**
+
+Set this to the number of known proxies between ingress and the application. This is used to determine the number of
+proxies to check in the `X-Forwarded-For` header, and is generally used when the IP addresses of the proxies cannot
+be reliably determined. The default is 0.
 
 ## Security considerations
 
@@ -71,7 +78,7 @@ In Mezzio, copy `Mezzio/config/ip_address.global.php.dist` into your Mezzio Appl
 
 ## Usage
 
-In Slim 3:
+In Slim:
 
 ```php
 $checkProxyHeaders = true; // Note: Never trust the IP address for security processes!
