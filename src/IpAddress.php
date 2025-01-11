@@ -51,6 +51,13 @@ class IpAddress implements MiddlewareInterface
     protected $attributeName = 'ip_address';
 
     /**
+     * Number of hops that can be considered safe. Set to a positive number to enable.
+     *
+     * @var int
+     */
+    protected $hopCount = 0;
+
+    /**
      * List of proxy headers inspected for the client IP address
      *
      * @var array
@@ -67,15 +74,17 @@ class IpAddress implements MiddlewareInterface
      * Constructor
      *
      * @param bool $checkProxyHeaders Whether to use proxy headers to determine client IP
-     * @param array $trustedProxies   List of IP addresses of trusted proxies
+     * @param ?array $trustedProxies  Unordered list of IP addresses of trusted proxies
      * @param string $attributeName   Name of attribute added to ServerRequest object
      * @param array $headersToInspect List of headers to inspect
+     * @param int $hopCount           Number of hops that can be considered safe. Set to a positive number to enable
      */
     public function __construct(
         $checkProxyHeaders = false,
         ?array $trustedProxies = null,
         $attributeName = null,
-        array $headersToInspect = []
+        array $headersToInspect = [],
+        int $hopCount = 0
     ) {
         if ($checkProxyHeaders && $trustedProxies === null) {
             throw new \InvalidArgumentException('Use of the forward headers requires an array for trusted proxies.');
@@ -105,6 +114,8 @@ class IpAddress implements MiddlewareInterface
         if (!empty($headersToInspect)) {
             $this->headersToInspect = $headersToInspect;
         }
+
+        $this->hopCount = $hopCount;
     }
 
     private function parseWildcard(string $ipAddress): array
@@ -211,7 +222,8 @@ class IpAddress implements MiddlewareInterface
                         $header,
                         $headerValue,
                         $ipAddress,
-                        $trustedProxies
+                        $trustedProxies,
+                        $this->hopCount
                     );
                     break;
                 }
@@ -224,8 +236,9 @@ class IpAddress implements MiddlewareInterface
     public function getIpAddressFromHeader(
         string $headerName,
         string $headerValue,
-        string $ipAddress,
-        array $trustedProxies
+        string $thisIpAddress,
+        array $trustedProxies,
+        int $hopCount
     ) {
         if (strtolower($headerName) == 'forwarded') {
             // The Forwarded header is different, so we need to extract the for= values. Note that we perform a
@@ -237,13 +250,13 @@ class IpAddress implements MiddlewareInterface
             foreach ($ipList as $ip) {
                 $ip = $this->extractIpAddress($ip);
                 if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ipAddress;
+                    return $thisIpAddress;
                 }
             }
         } else {
             $ipList = explode(',', $headerValue);
         }
-        $ipList[] = $ipAddress;
+        $ipList[] = $thisIpAddress;
 
         // Remove port from each item in the list
         $ipList = array_map(function ($ip) {
@@ -253,20 +266,28 @@ class IpAddress implements MiddlewareInterface
         // Ensure all IPs are valid and return $ipAddress if not
         foreach ($ipList as $ip) {
             if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                return $ipAddress;
+                return $thisIpAddress;
             }
         }
 
         // walk list from right to left removing known proxy IP addresses.
         $ipList = array_reverse($ipList);
+        $count = 0;
         foreach ($ipList as $ip) {
-            $ip = trim($ip);
-            if (!empty($ip) && !$this->isTrustedProxy($ip, $trustedProxies)) {
+            $count++;
+            if (!$this->isTrustedProxy($ip, $trustedProxies)) {
+                if ($count <= $hopCount) {
+                    continue;
+                }
                 return $ip;
+//            } else {
+//                if ($count <= $hopCount) {
+//                    continue;
+//                }
             }
         }
 
-        return $ipAddress;
+        return $thisIpAddress;
     }
 
     protected function isTrustedProxy(string $ipAddress, array $trustedProxies): bool
