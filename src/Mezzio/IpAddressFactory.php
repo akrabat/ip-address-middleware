@@ -27,12 +27,14 @@ class IpAddressFactory
         $trustedProxies = $config['rka']['ip_address']['trusted_proxies'] ?? null;
         $attributeName = $config['rka']['ip_address']['attribute_name'] ?? null;
         $headersToInspect = $config['rka']['ip_address']['headers_to_inspect'] ?? [];
+        $hopCount = $config['rka']['ip_address']['hop_count'] ?? 0;
 
         return new IpAddress(
             $checkProxyHeaders,
             $trustedProxies,
             $attributeName,
-            $headersToInspect
+            $headersToInspect,
+            $hopCount
         );
     }
 }
