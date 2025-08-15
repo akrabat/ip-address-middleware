@@ -4,7 +4,10 @@
     "keywords": [
         "psr7", "middleware", "ip"
     ],
-    "homepage": "http://github.com/akrabat/rka-ip-address-middleware",
+    "support": {
+        "issues": "https://github.com/akrabat/ip-address-middleware/issues",
+        "source": "https://github.com/akrabat/ip-address-middleware"
+    },
     "type": "library",
     "license": "BSD-3-Clause",
     "authors": [
